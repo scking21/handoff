@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<form class="inline" method="post" action="/tickets/new">
+  <select name="scenario">
+    {% for s in scenarios %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+  </select>
+  <label class="switch"><input type="checkbox" name="after_hours" value="true"> after hours</label>
+  <button class="primary" type="submit">Submit tenant request</button>
+</form>
+
+<div class="board" style="margin-top:16px">
+  {% for col in columns %}
+  <div class="col">
+    <h2>{{ col.status.value.replace('_', ' ') }} ({{ col.tickets|length }})</h2>
+    {% for t in col.tickets %}
+    <a class="card" href="/tickets/{{ t.id }}">
+      <strong>Unit {{ t.unit }}</strong>
+      {% if t.urgency %}<span class="pill {{ t.urgency.value }}">{{ t.urgency.value }}</span>{% endif %}
+      <div>{{ t.raw_request[:90] }}</div>
+      <div class="meta">
+        {% if t.category %}{{ t.category.value }} · {% endif %}
+        {% if t.selected_vendor_id %}{{ vendor_name(t.selected_vendor_id) }} · {% endif %}
+        {% if t.authorized_cost %}${{ t.authorized_cost }}{% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

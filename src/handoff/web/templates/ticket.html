@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="detail">
+  <a class="back" href="/">← board</a>
+  <div class="panel" style="margin-top:12px">
+    <h3>Ticket {{ t.id }} — {{ t.status.value.replace('_',' ') }}</h3>
+    <p><strong>Unit {{ t.unit }}</strong> ·
+       {% if t.urgency %}<span class="pill {{ t.urgency.value }}">{{ t.urgency.value }}</span>{% endif %}
+       {% if t.category %} {{ t.category.value }}{% endif %}</p>
+    <p>“{{ t.raw_request }}”</p>
+    {% if t.photo_descriptions %}<p class="meta">photos: {{ t.photo_descriptions|join('; ') }}</p>{% endif %}
+    <p class="meta">triage confidence {{ "%.2f"|format(t.triage_confidence) }} — {{ t.triage_rationale or 'n/a' }}</p>
+    {% if t.selected_vendor_id %}<p>Vendor: <strong>{{ vendor_name }}</strong>, authorized <strong>${{ t.authorized_cost }}</strong></p>{% endif %}
+    {% if t.pending_vendor_id and t.status.value == 'awaiting_approval' %}
+      <p>Pending dispatch: <strong>{{ pending_vendor_name }}</strong> for ${{ t.authorized_cost }}</p>
+      <form class="inline" method="post" action="/tickets/{{ t.id }}/decision">
+        <button class="good" name="decision" value="approve">Approve</button>
+        <button class="danger" name="decision" value="reject">Reject</button>
+      </form>
+    {% endif %}
+  </div>
+
+  {% if t.status.value in ('scheduled','in_progress') %}
+  <div class="panel">
+    <h3>Act as vendor</h3>
+    <form method="post" action="/tickets/{{ t.id }}/vendor">
+      <input type="hidden" name="action" value="complete">
+      <div class="row">
+        <input name="notes" placeholder="completion notes" style="flex:1">
+        <input name="parts" placeholder="parts used, comma-sep" style="flex:1">
+        <input name="invoice" type="number" placeholder="invoice $" style="width:120px">
+        <button type="submit">Mark complete</button>
+      </div>
+    </form>
+    <form class="inline" method="post" action="/tickets/{{ t.id }}/vendor" style="margin-top:8px">
+      <button class="danger" name="action" value="decline">Decline job (re-route)</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if t.status.value == 'completed' %}
+  <div class="panel">
+    <h3>Act as tenant</h3>
+    <form class="inline" method="post" action="/tickets/{{ t.id }}/verify">
+      <button class="good" name="ok" value="true">Confirm fixed</button>
+      <button class="danger" name="ok" value="false">Not fixed</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="panel">
+    <h3>Outbox</h3>
+    {% for m in messages %}
+    <div class="msg"><span class="to">to {{ m.to_role.value }} · {{ m.kind }}</span><br>{{ m.body }}</div>
+    {% else %}<p class="meta">no messages yet</p>{% endfor %}
+  </div>
+
+  <div class="panel">
+    <h3>Audit trail</h3>
+    <ul class="timeline">
+      {% for e in t.timeline %}
+      <li><span class="who">{{ e.actor.value }}</span> {{ e.kind }}{% if e.detail %} — {{ e.detail }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

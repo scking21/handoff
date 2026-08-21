@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Handoff — maintenance coordination agent</title>
+  <style>
+    :root {
+      --bg: #0f1115; --panel: #171a21; --line: #262b36; --text: #e6e9ef;
+      --muted: #8b93a5; --accent: #4f8cff; --warn: #ffb84f; --bad: #ff6b6b; --good: #51cf87;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+           font: 14px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
+    header { display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+             border-bottom: 1px solid var(--line); background: var(--panel); }
+    header h1 { font-size: 17px; margin: 0; letter-spacing: .3px; }
+    header h1 span { color: var(--accent); }
+    header .tag { color: var(--muted); font-size: 12px; }
+    main { padding: 18px 20px; }
+    form.inline { display: inline-flex; gap: 8px; align-items: center; }
+    select, input, button, textarea {
+      background: #1d222c; color: var(--text); border: 1px solid var(--line);
+      border-radius: 7px; padding: 7px 10px; font: inherit;
+    }
+    button { cursor: pointer; border-color: var(--accent); color: var(--accent); }
+    button.primary { background: var(--accent); color: #fff; }
+    button.danger { border-color: var(--bad); color: var(--bad); }
+    button.good { border-color: var(--good); color: var(--good); }
+    .board { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 12px; }
+    .col { min-width: 250px; flex: 1; }
+    .col h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .12em;
+              color: var(--muted); margin: 0 0 8px; }
+    .card { display: block; background: var(--panel); border: 1px solid var(--line);
+            border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+            color: var(--text); text-decoration: none; }
+    .card:hover { border-color: var(--accent); }
+    .card .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .pill { display: inline-block; padding: 1px 8px; border-radius: 99px;
+            font-size: 11px; border: 1px solid var(--line); color: var(--muted); }
+    .pill.emergency { border-color: var(--bad); color: var(--bad); }
+    .pill.urgent { border-color: var(--warn); color: var(--warn); }
+    .pill.routine { border-color: var(--good); color: var(--good); }
+    .detail { max-width: 860px; margin: 0 auto; }
+    .panel { background: var(--panel); border: 1px solid var(--line);
+             border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+    .panel h3 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase;
+                letter-spacing: .1em; color: var(--muted); }
+    .timeline { list-style: none; margin: 0; padding: 0; }
+    .timeline li { padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+    .timeline li:last-child { border-bottom: none; }
+    .timeline .who { color: var(--accent); font-weight: 600; margin-right: 6px; }
+    .msg { padding: 8px 10px; border-left: 3px solid var(--accent);
+           background: #1a1f29; border-radius: 0 8px 8px 0; margin-bottom: 8px; }
+    .msg .to { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    a.back { color: var(--muted); text-decoration: none; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    label.switch { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Handoff<span>.</span></h1>
+    <div class="tag">autonomous maintenance coordination — agents handle the handoffs, humans handle the judgment</div>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+</body>
+</html>
