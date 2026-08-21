@@ -180,8 +180,54 @@ class DynamoDBStore:
 
     # tickets ---------------------------------------------------------------
 
+    @staticmethod
+    def _rebase_stale_writer(incoming: WorkOrder, stored: WorkOrder) -> None:
+        """Mirror FileStore.put_ticket: the audit trail is append-only, so a
+        stale writer rebases onto the stored aggregate (timelines merge by
+        event identity, scalars stay last-writer-wins) instead of clobbering
+        events another writer committed in the meantime."""
+        if stored.revision == incoming.revision:
+            return
+        seen = {(e.at, e.actor, e.kind, e.detail) for e in incoming.timeline}
+        for event in stored.timeline:
+            if (event.at, event.actor, event.kind, event.detail) not in seen:
+                incoming.timeline.append(event)
+        incoming.timeline.sort(key=lambda e: e.at)
+
     def put_ticket(self, ticket: WorkOrder) -> None:
-        self._conditional_put(_TICKET, ticket.id, ticket.model_dump(mode="json"))
+        last_error: Exception | None = None
+        for attempt in range(self.max_attempts):
+            raw = self._raw_get(_TICKET, ticket.id)
+            if raw is None:
+                ticket.revision = 1
+                version, condition, values = 0, "attribute_not_exists(version)", None
+            else:
+                stored = self._validate(WorkOrder, raw["data"])
+                self._rebase_stale_writer(ticket, stored)
+                ticket.revision = stored.revision + 1
+                version, condition = raw["version"] + 1, "version = :expected"
+                values = {":expected": {"N": str(raw["version"])}}
+            request: dict[str, Any] = {
+                "TableName": self.table_name,
+                "Item": {
+                    "pk": {"S": _TICKET},
+                    "sk": {"S": ticket.id},
+                    "version": {"N": str(version)},
+                    "data": {"M": _SERIALIZER.serialize(_to_decimal(ticket.model_dump(mode="json")))[ "M"]},
+                },
+                "ConditionExpression": condition,
+            }
+            if values:
+                request["ExpressionAttributeValues"] = values
+            try:
+                self.client.put_item(**request)
+                return
+            except self.client.exceptions.ConditionalCheckFailedException as exc:
+                last_error = exc
+                time.sleep(self.backoff_seconds * min(attempt + 1, 5))
+        raise TicketConflictError(
+            f"put_ticket({ticket.id}) lost {self.max_attempts} version races; investigate writer skew"
+        ) from last_error
 
     def get_ticket(self, ticket_id: str) -> WorkOrder | None:
         raw = self._raw_get(_TICKET, ticket_id)
@@ -192,29 +238,29 @@ class DynamoDBStore:
         mutator's result (typically the tool response string), or None when the
         ticket does not exist — matching FileStore."""
         last_error: Exception | None = None
-        for _ in range(self.max_attempts):
+        for attempt in range(self.max_attempts):
             raw = self._raw_get(_TICKET, ticket_id)
             if raw is None:
                 return None
             ticket = self._validate(WorkOrder, raw["data"])
             result = mutator(ticket)
-            expected = raw["version"]
+            ticket.revision = int(raw["data"].get("revision") or 0) + 1
             try:
                 self.client.put_item(
                     TableName=self.table_name,
                     Item={
                         "pk": {"S": _TICKET},
                         "sk": {"S": ticket_id},
-                        "version": {"N": str(expected + 1)},
+                        "version": {"N": str(raw["version"] + 1)},
                         "data": {"M": _SERIALIZER.serialize(_to_decimal(ticket.model_dump(mode="json")))["M"]},
                     },
                     ConditionExpression="version = :expected",
-                    ExpressionAttributeValues={":expected": {"N": str(expected)}},
+                    ExpressionAttributeValues={":expected": {"N": str(raw["version"])}},
                 )
                 return result
             except self.client.exceptions.ConditionalCheckFailedException as exc:
                 last_error = exc
-                time.sleep(self.backoff_seconds * min((_ + 1), 5))
+                time.sleep(self.backoff_seconds * min(attempt + 1, 5))
         raise TicketConflictError(
             f"update_ticket({ticket_id}) lost {self.max_attempts} version races; investigate writer skew"
         ) from last_error

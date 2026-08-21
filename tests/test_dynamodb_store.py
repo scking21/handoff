@@ -109,6 +109,44 @@ def test_roundtrip_every_entity_type(store):
     assert [t.id for t in store.list_tickets()] == [ticket.id]
 
 
+def test_update_ticket_bumps_revision_and_returns_result(store):
+    ticket = _ticket()
+    store.put_ticket(ticket)
+    assert ticket.revision == 1
+
+    def mark_dispatched(wo: WorkOrder) -> str:
+        wo.status = TicketStatus.DISPATCHED
+        wo.timeline.append(TimelineEvent(actor=Actor.AGENT, kind="dispatched", detail="ven1"))
+        return "DISPATCHED"
+
+    assert store.update_ticket(ticket.id, mark_dispatched) == "DISPATCHED"
+    got = store.get_ticket(ticket.id)
+    assert got.revision == 2
+    assert got.status == TicketStatus.DISPATCHED
+    assert got.timeline[-1].kind == "dispatched"
+
+
+def test_put_ticket_rebases_stale_writer_like_filestore(store):
+    ticket = _ticket()
+    store.put_ticket(ticket)
+    stale = store.get_ticket(ticket.id)
+
+    fresh = store.get_ticket(ticket.id)
+    fresh.timeline.append(TimelineEvent(actor=Actor.VENDOR, kind="accepted", detail="en route"))
+    store.put_ticket(fresh)
+
+    stale.timeline.append(TimelineEvent(actor=Actor.PM, kind="approved", detail="ok"))
+    store.put_ticket(stale)
+
+    merged = store.get_ticket(ticket.id)
+    actor_kinds = {(e.actor.value, e.kind) for e in merged.timeline}
+    assert ("vendor", "accepted") in actor_kinds
+    assert ("property_manager", "approved") in actor_kinds
+    assert len([e for e in merged.timeline if e.kind == "triaged"]) == 1
+    assert [e.at for e in merged.timeline] == sorted(e.at for e in merged.timeline)
+    assert merged.revision == 3
+
+
 def test_get_missing_ticket_returns_none_like_filestore(store):
     assert store.get_ticket("wo_nope") is None
     assert store.get_tenant("ten_nope") is None
