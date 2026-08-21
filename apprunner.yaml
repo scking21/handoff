@@ -1,0 +1,25 @@
+version: 1.0
+runtime: python313
+build:
+  commands:
+    build:
+      - pip install --upgrade pip
+      - pip install -e ".[aws]"
+run:
+  runtime-version: 3.13
+  command: uvicorn handoff.web.app:app --host 0.0.0.0 --port 8000
+  network:
+    port: 8000
+  env:
+    - name: HANDOFF_MODEL_PROVIDER
+      value: bedrock
+    - name: AWS_REGION
+      value: us-east-2
+    - name: AWS_DEFAULT_REGION
+      value: us-east-2
+    - name: HANDOFF_STORE
+      value: dynamodb
+    - name: HANDOFF_DDB_TABLE
+      value: handoff
+    - name: HANDOFF_DATA_DIR
+      value: /tmp/handoff-data
