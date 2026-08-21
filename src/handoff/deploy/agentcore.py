@@ -3,6 +3,9 @@
 Prereqs: AWS credentials with AgentCore/Bedrock permissions, and
 `pip install bedrock-agentcore-starter-toolkit`.
 
+Official recipe (Resources page):
+https://aws.github.io/bedrock-agentcore-starter-toolkit/user-guide/runtime/quickstart.html
+
 Usage: .venv/bin/python -m handoff.deploy.agentcore [--launch]
 """
 

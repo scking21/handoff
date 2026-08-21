@@ -36,6 +36,9 @@ classify safely.
 - [x] Public repo + MIT license (About section)
 - [x] README + architecture diagram (mermaid)
 - [ ] ≤5-min video (script ready — docs/video-script.md)
-- [ ] Live demo link (AgentCore deploy once AWS creds exist)
+- [ ] Live demo link (AgentCore deploy once AWS creds exist — recipe:
+      https://aws.github.io/bedrock-agentcore-starter-toolkit/user-guide/runtime/quickstart.html)
 - [ ] Text description (this doc, finalized)
 - [ ] builder.aws.com posts ×3 (drafts ready — docs/blog/)
+- [x] $50 credits requested — ⚠️ verify form matches Resources page
+      (https://forms.gle/Ssr8zLw4afKg114M7) before Sep 11 12pm PT; see docs/resources.md
