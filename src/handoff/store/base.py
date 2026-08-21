@@ -19,6 +19,11 @@ from handoff.domain.models import Actor, OutboundMessage, Property, Tenant, Vend
 class Store(Protocol):
     def put_ticket(self, ticket: WorkOrder) -> None: ...
     def get_ticket(self, ticket_id: str) -> WorkOrder | None: ...
+    def update_ticket(self, ticket_id: str, mutator):
+        """Atomic read-modify-write. Returns the mutator's result value.
+        LLMs batch tool calls and executors may run them concurrently;
+        without this, parallel tools lose updates."""
+        ...
     def list_tickets(self) -> list[WorkOrder]: ...
     def put_vendor(self, vendor: Vendor) -> None: ...
     def list_vendors(self, trade: str | None = None) -> list[Vendor]: ...
@@ -61,6 +66,23 @@ class FileStore:
         with self._lock:
             raw = self._read("tickets").get(ticket_id)
         return WorkOrder.model_validate(raw) if raw else None
+
+    def update_ticket(self, ticket_id: str, mutator):
+        """Atomic read-modify-write under the store lock; returns whatever the
+        mutator returns (typically the tool's response string).
+
+        Serializes concurrent tool calls within this process. The production
+        DynamoDBStore implements the same guarantee with conditional writes
+        (attribute_not_exists/versions), so agents that batch tool calls can
+        never lose an update."""
+        with self._lock:
+            raw = self._read("tickets").get(ticket_id)
+            if not raw:
+                return None
+            ticket = WorkOrder.model_validate(raw)
+            result = mutator(ticket)
+            self.put_ticket(ticket)
+            return result
 
     def list_tickets(self) -> list[WorkOrder]:
         with self._lock:

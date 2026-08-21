@@ -33,14 +33,16 @@ Finish with a one-line summary of the outcome."""
 
 
 class CoordinatorAgent:
-    def __init__(self, tools: HandoffTools, model=None):
+    def __init__(self, tools: HandoffTools, model=None, trace_hook=None):
         from strands import Agent
 
         self.tools = tools
+        hooks = [trace_hook] if trace_hook is not None else None
         self.agent = Agent(
             model=model,
             system_prompt=POLICY.replace("$APPROVAL_THRESHOLD", str(tools.approval_threshold)),
             tools=tools.all(),
+            hooks=hooks,
         )
 
     def handle_request(self, payload: dict) -> str:
