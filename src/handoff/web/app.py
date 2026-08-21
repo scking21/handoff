@@ -37,7 +37,16 @@ STATUS_ORDER = [
 
 class DashboardState:
     def __init__(self) -> None:
-        self.store = FileStore(root=settings.data_dir)
+        if settings.store_backend == "dynamodb":
+            from handoff.store.dynamodb import DynamoDBStore
+
+            self.store = DynamoDBStore(table_name=settings.dynamodb_table)
+            self.store.ensure_table()
+        else:
+            self.store = FileStore(root=settings.data_dir)
+        from handoff.tracing import configure_tracing
+
+        configure_tracing()
         self.tools = HandoffTools(self.store, approval_threshold=settings.approval_threshold)
         self.triage = get_triage_provider(settings.model_provider)
         self.scheduler = SchedulerService(self.tools, interval_seconds=300)

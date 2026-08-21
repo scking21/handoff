@@ -94,7 +94,17 @@ class HandoffTools:
         self, ticket_id: str, urgency: str, category: str, confidence: float, rationale: str = ""
     ) -> str:
         """Persist the triage decision on the ticket. Confidence below 0.55
-        escalates to a human instead of acting — honesty over guessing."""
+        escalates to a human instead of acting — honesty over guessing.
+        Invalid values return a correctable error; they never crash the loop."""
+        valid_urgency = [u.value for u in Urgency]
+        valid_category = [t.value for t in Trade]
+        if urgency not in valid_urgency or category not in valid_category:
+            return (
+                f"ERROR: invalid urgency='{urgency}' or category='{category}'. "
+                f"Retry with urgency in {valid_urgency} and category in {valid_category}. "
+                f"Pick the single best-matching trade for the repair needed."
+            )
+
         def mut(t: WorkOrder):
             t.urgency = Urgency(urgency)
             t.category = Trade(category)
@@ -159,21 +169,26 @@ class HandoffTools:
         return out if isinstance(out, str) else (f"ERROR: no ticket {ticket_id}" if out is None else out)
 
     def create_approval_gate(
-        self, ticket_id: str, reason: str, est_cost: int, idem_key: str, vendor_id: str = ""
+        self, ticket_id: str, reason: str, est_cost: int, idem_key: str, vendor_id: str
     ) -> str:
         """Pause the ticket pending property-manager approval. Durable: stays
         AWAITING_APPROVAL until resolve_approval is called. The intended
-        dispatch (vendor + price) is persisted at gate time so a decision made
-        hours later resumes exactly this action — not a re-search."""
+        dispatch (vendor + price) is REQUIRED here — the PM approves *this*
+        dispatch, and resume replays exactly that. A gate without an intended
+        vendor cannot be resumed and is refused."""
         def mut(t: WorkOrder):
+            if not vendor_id:
+                return (
+                    "REFUSED: create_approval_gate requires vendor_id — the PM approves a "
+                    "specific dispatch; without it the gate cannot be resumed"
+                )
             replayed = self._check_idem(t, idem_key)
             if replayed:
                 return replayed
             t.status = TicketStatus.AWAITING_APPROVAL
             t.authorized_scope = reason
             t.authorized_cost = est_cost
-            if vendor_id:
-                t.pending_vendor_id = vendor_id
+            t.pending_vendor_id = vendor_id
             t.record(Actor.AGENT, "approval_gate_created", f"{reason} (${est_cost})")
             return f"APPROVAL_GATE_CREATED: ticket {t.id} paused awaiting PM decision"
 

@@ -120,7 +120,9 @@ def gate_and_dispatch(tools: HandoffTools, ticket_id: str, choice: VendorChoice,
             if choice.estimated_cost > tools.approval_threshold
             else f"After-hours emergency dispatch to {choice.vendor_id}"
         )
-        return tools.create_approval_gate(ticket_id, reason, choice.estimated_cost, idem_key=f"{t.id}:gate")
+        return tools.create_approval_gate(
+            ticket_id, reason, choice.estimated_cost, idem_key=f"{t.id}:gate", vendor_id=choice.vendor_id
+        )
     return _dispatch(tools, ticket_id, choice)
 
 

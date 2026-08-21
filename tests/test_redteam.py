@@ -257,8 +257,8 @@ def test_defense_gate_creation_is_idempotent(world):
     store, tools, tenants = world
     t = _intake(store, tenants)
     _triage(tools, t.id)
-    r1 = tools.create_approval_gate(t.id, "over threshold", 900, idem_key=f"{t.id}:gate")
-    r2 = tools.create_approval_gate(t.id, "over threshold", 900, idem_key=f"{t.id}:gate")
+    r1 = tools.create_approval_gate(t.id, "over threshold", 900, idem_key=f"{t.id}:gate", vendor_id="ven_x")
+    r2 = tools.create_approval_gate(t.id, "over threshold", 900, idem_key=f"{t.id}:gate", vendor_id="ven_x")
     assert r1.startswith("APPROVAL_GATE_CREATED")
     assert r2.startswith("REPLAYED")
 

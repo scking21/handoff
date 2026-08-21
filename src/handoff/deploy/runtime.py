@@ -39,14 +39,24 @@ class _LazyState:
 
                 provider = settings.model_provider
                 data_dir = settings.data_dir
+                store_backend = settings.store_backend
                 if in_agentcore_container():
                     # Container: /var/task is not writable and shell env vars
                     # don't reach us — the runtime role carries AWS identity,
-                    # so the real Bedrock brain is always the right call.
+                    # so the real Bedrock brain + durable DynamoDB state are
+                    # always the right call.
                     provider = "bedrock" if provider == "heuristic" else provider
                     data_dir = "/tmp/handoff-data"
+                    store_backend = "dynamodb"
 
-                store = FileStore(root=data_dir)
+                if store_backend == "dynamodb":
+                    from handoff.store.dynamodb import DynamoDBStore
+
+                    store = DynamoDBStore(table_name=settings.dynamodb_table,
+                                          region=settings.aws_region)
+                    store.ensure_table()
+                else:
+                    store = FileStore(root=data_dir)
                 tools = HandoffTools(store, approval_threshold=settings.approval_threshold)
                 triage = get_triage_provider(provider)
                 scheduler = SchedulerService(tools, interval_seconds=300)

@@ -18,6 +18,9 @@ class Settings:
     )
     approval_threshold: int = field(default_factory=lambda: int(os.getenv("HANDOFF_APPROVAL_THRESHOLD", "400")))
     data_dir: str = field(default_factory=lambda: os.getenv("HANDOFF_DATA_DIR", "data/runtime"))
+    store_backend: str = field(default_factory=lambda: os.getenv("HANDOFF_STORE", "file"))  # file|dynamodb
+    dynamodb_table: str = field(default_factory=lambda: os.getenv("HANDOFF_DDB_TABLE", "handoff"))
+    sms_channel: str = field(default_factory=lambda: os.getenv("HANDOFF_SMS_CHANNEL", "console"))
 
 
 def in_agentcore_container() -> bool:
