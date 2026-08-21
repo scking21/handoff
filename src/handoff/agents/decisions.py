@@ -77,7 +77,7 @@ class LLMTriageProvider:
         "You are the triage brain for a property-management maintenance coordinator. "
         "Classify each tenant maintenance report.\n"
         "URGENCY — emergency: active water intrusion (pouring/flooding/ceiling water), gas odor, "
-        "electrical sparking/burning/smoke from fixtures or switches, burning smells from equipment, "
+        "electrical sparking/burning/smoke from fixtures or switches, ANY burning smell from heating/cooling equipment (even if it still runs and even if it is brief or recurring — this is not normal dust burn-off when reported by a tenant), "
         "smoke or carbon-monoxide detector activation, whole-unit power loss, lockout, sewage backup, "
         "anything immediately habitability-threatening. "
         "urgent: primary systems down (heat in cold weather, no hot water anywhere in the unit), "
