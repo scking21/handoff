@@ -154,4 +154,4 @@ def tenant_verify(ticket_id: str, ok: bool = Form(True)):
 @app.post("/sweep")
 def sweep():
     actions = state.scheduler.tick_once()
-    return {"actions": actions}
+    return RedirectResponse("/", status_code=303)
