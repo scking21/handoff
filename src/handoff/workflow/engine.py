@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from handoff.domain.models import Actor, TicketStatus, Trade, Urgency, WorkOrder
-from handoff.tools.toolkit import HandoffTools
+from handoff.tools.toolkit import HandoffTools, utcnow
 
 
 @dataclass
@@ -148,8 +148,11 @@ def _dispatch(tools: HandoffTools, ticket_id: str, choice: VendorChoice) -> str:
 
 
 def vendor_response(tools: HandoffTools, ticket_id: str, accept: bool, alternates: list[str] | None = None) -> str:
-    """Vendor accepted (-> scheduling) or declined (-> re-route down the bench)."""
+    """Vendor accepted (-> scheduling) or declined (-> re-route down the bench).
+    Only a ticket actually awaiting vendor response may transition."""
     t = _must(tools, ticket_id)
+    if t.status != TicketStatus.DISPATCHED:
+        return f"IGNORED: ticket {t.id} not awaiting vendor response (status={t.status.value})"
     if accept:
         t.status = TicketStatus.SCHEDULED
         t.record(Actor.VENDOR, "accepted", "")
@@ -161,14 +164,18 @@ def vendor_response(tools: HandoffTools, ticket_id: str, accept: bool, alternate
         res = tools.dispatch_work_order(
             t.id, alt, t.authorized_scope, t.authorized_cost or 0, idem_key=f"{t.id}:dispatch:{alt}"
         )
-        if "REPLAYED" not in res:
+        if "REPLAYED" not in res and "REFUSED" not in res:
             return f"REROUTED: {alt}"
     return tools.escalate_to_human(t.id, "all candidate vendors declined")
 
 
 def complete_and_verify(tools: HandoffTools, ticket_id: str, notes: str, parts: list[str], invoice_amount: int) -> str:
-    """Closeout: completion record, tenant verification ping, invoice three-way match."""
+    """Closeout: completion record, tenant verification ping, invoice three-way match.
+    Only tickets in an active work state can complete — forged closeouts on
+    untriaged or gated tickets are ignored."""
     t = _must(tools, ticket_id)
+    if t.status not in (TicketStatus.SCHEDULED, TicketStatus.IN_PROGRESS):
+        return f"IGNORED: ticket {t.id} not in an active work state (status={t.status.value})"
     t.completion_notes = notes
     t.parts_used = parts
     t.invoice_amount = invoice_amount
@@ -207,9 +214,9 @@ def nightly_sweep(tools: HandoffTools) -> list[str]:
             if t.stall_count >= 3:
                 actions.append(tools.escalate_to_human(t.id, "vendor unresponsive after 3 nudges"))
         elif t.status == TicketStatus.AWAITING_APPROVAL:
-            age_hours = (t.updated_at.hour - t.created_at.hour) % 24
+            age_hours = (utcnow() - t.updated_at).total_seconds() / 3600
             if age_hours >= 12:
-                actions.append(f"approval still pending on {t.id}")
+                actions.append(f"approval still pending on {t.id} ({age_hours:.0f}h)")
     return actions
 
 

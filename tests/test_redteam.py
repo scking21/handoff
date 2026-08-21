@@ -58,10 +58,6 @@ def _first_vendor(store, trade):
 # ---------------------------------------------------------------- holes
 
 
-@pytest.mark.xfail(reason="HOLE 1: dispatch_work_order enforces no spend policy and no "
-                          "status precondition; the coordinator LLM calls tools directly, "
-                          "so injected tenant text can dispatch above threshold without a gate",
-                   strict=True)
 def test_hole_dispatch_tool_must_enforce_threshold(world):
     store, tools, tenants = world
     t = _intake(store, tenants)
@@ -73,9 +69,6 @@ def test_hole_dispatch_tool_must_enforce_threshold(world):
     assert store.get_ticket(t.id).status != TicketStatus.DISPATCHED
 
 
-@pytest.mark.xfail(reason="HOLE 3: complete_and_verify accepts any inbound status; a forged "
-                          "closeout (invoice $0) closes a ticket that was never triaged, "
-                          "gated, or dispatched", strict=True)
 def test_hole_closeout_requires_dispatched_ticket(world):
     store, tools, tenants = world
     t = _intake(store, tenants)
@@ -86,9 +79,6 @@ def test_hole_closeout_requires_dispatched_ticket(world):
     )
 
 
-@pytest.mark.xfail(reason="HOLE 4: vendor_response has no state guard; a DECLINE replayed "
-                          "after ACCEPT silently reassigns an accepted job and can flip "
-                          "SCHEDULED back to DISPATCHED", strict=True)
 def test_hole_decline_after_accept_is_rejected(world):
     store, tools, tenants = world
     t = _intake(store, tenants)
@@ -106,9 +96,6 @@ def test_hole_decline_after_accept_is_rejected(world):
     assert final.selected_vendor_id == vid
 
 
-@pytest.mark.xfail(reason="HOLE 5: nightly_sweep ages approvals via (updated.hour - "
-                          "created.hour) % 24 — wall-clock hour-of-day arithmetic that "
-                          "ignores elapsed days; approvals stalled for days go unnoticed", strict=True)
 def test_hole_sweep_flags_multi_day_stale_approval(world):
     store, tools, tenants = world
     t = _intake(store, tenants)
@@ -127,9 +114,6 @@ def test_hole_sweep_flags_multi_day_stale_approval(world):
     assert t.id in actions, "approval pending for 2 days must surface in the sweep"
 
 
-@pytest.mark.xfail(reason="HOLE 8: store reads/writes have no optimistic concurrency; two "
-                          "holders of the same aggregate last-writer-win and silently drop "
-                          "each other's audit events (sweep racing in-flight intake)", strict=True)
 def test_hole_interleaved_writers_do_not_lose_events(world):
     store, tools, tenants = world
     t = _intake(store, tenants)
@@ -245,6 +229,7 @@ def test_exposure_invoice_boundary_is_strictly_over_110_percent(world):
         t = _intake(store, tenants)
         _triage(tools, t.id, trade=Trade.GENERAL)
         tools.dispatch_work_order(t.id, _first_vendor(store, "general").id, "s", 400, idem_key=f"{t.id}:d")
+        engine.vendor_response(tools, t.id, accept=True)  # vendor accepts -> SCHEDULED
         result = engine.complete_and_verify(tools, t.id, "done", [], invoice)
         return result.split(":")[0], store.get_ticket(t.id).status
 
@@ -282,6 +267,7 @@ def test_defense_all_vendors_decline_escalates_instead_of_dropping(world):
     store, tools, tenants = world
     t = _intake(store, tenants)
     _triage(tools, t.id)
+    tools.dispatch_work_order(t.id, _first_vendor(store, "plumbing").id, "s", 300, idem_key=f"{t.id}:d")
     result = engine.vendor_response(tools, t.id, accept=False, alternates=[])
     assert result.startswith("ESCALATED")
     assert store.get_ticket(t.id).status == TicketStatus.EXCEPTION

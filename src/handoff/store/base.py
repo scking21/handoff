@@ -59,6 +59,24 @@ class FileStore:
     def put_ticket(self, ticket: WorkOrder) -> None:
         with self._lock:
             data = self._read("tickets")
+            current_raw = data.get(ticket.id)
+            if current_raw is not None:
+                current = WorkOrder.model_validate(current_raw)
+                if current.revision != ticket.revision:
+                    # Stale writer: rebase onto the stored aggregate. The audit
+                    # trail is append-only, so timelines merge (union by event
+                    # identity); scalar fields remain last-writer-wins. This
+                    # keeps interleaved writers from silently dropping each
+                    # other's events. The production DynamoDBStore enforces the
+                    # same invariant with conditional writes instead.
+                    seen = {(e.at, e.actor, e.kind, e.detail) for e in ticket.timeline}
+                    for e in current.timeline:
+                        if (e.at, e.actor, e.kind, e.detail) not in seen:
+                            ticket.timeline.append(e)
+                    ticket.timeline.sort(key=lambda e: e.at)
+                ticket.revision = current.revision + 1
+            else:
+                ticket.revision = 1
             data[ticket.id] = ticket.model_dump(mode="json")
             self._write("tickets", data)
 

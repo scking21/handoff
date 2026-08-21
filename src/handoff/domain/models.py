@@ -146,6 +146,7 @@ class WorkOrder(BaseModel):
     approval: ApprovalDecision | None = None
     idempotency_keys: set[str] = Field(default_factory=set)
     stall_count: int = 0
+    revision: int = 0  # bumped on every persisted write; enables stale-write detection
 
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)

@@ -203,12 +203,26 @@ class HandoffTools:
         return out if isinstance(out, str) else f"ERROR: no ticket {ticket_id}"
 
     def dispatch_work_order(self, ticket_id: str, vendor_id: str, scope: str, cost: int, idem_key: str) -> str:
-        """Send the winning vendor a complete job offer. Exactly-once per idem_key."""
+        """Send the winning vendor a complete job offer. Exactly-once per idem_key.
+
+        Policy lives HERE, not just in the orchestration layer: over-threshold
+        dispatch is refused unless the ticket carries an approved gate, and
+        terminal states cannot be re-dispatched. An LLM that skips the gate —
+        whether hallucinating or injected — hits this wall."""
         v = next((x for x in self.store.list_vendors() if x.id == vendor_id), None)
         if not v:
             return f"ERROR: no vendor {vendor_id}"
 
         def mut(t: WorkOrder):
+            over_threshold = cost > self.approval_threshold
+            approved = t.approval is not None and t.approval.decision == "approve"
+            if over_threshold and not approved:
+                return (
+                    f"REFUSED: ${cost} exceeds ${self.approval_threshold} threshold "
+                    f"— create_approval_gate and obtain PM approval first"
+                )
+            if t.status not in (TicketStatus.TRIAGED, TicketStatus.DISPATCHED):
+                return f"REFUSED: ticket {t.id} is {t.status.value}; dispatch requires a triaged ticket"
             replayed = self._check_idem(t, idem_key)
             if replayed:
                 return replayed
