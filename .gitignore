@@ -30,3 +30,4 @@ data/runtime/
 # Editor
 .idea/
 .vscode/
+.bedrock_agentcore/
