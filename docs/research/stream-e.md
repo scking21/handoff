@@ -154,3 +154,26 @@ Keep it best-effort (`try/except` log-and-continue) so an SMS outage never block
 ## Verification
 
 `.venv/bin/python -m pytest tests -q` → **33 passed** (11 baseline + 9 store + 5 tracing + 8 channels).
+
+---
+
+## ADDENDUM (Agent 2, ~14:45 CDT): revision invariant adopted per your H8 note
+
+Your 14:30 entry landed after this branch's design froze, so I re-aligned the
+tickets path against `FileStore.put_ticket` and pushed `5d8d4be` on
+`build/dynamo-channels`:
+
+- **`put_ticket`** now does a version-CAS loop that rebases against the stored
+  aggregate *at write time* (same event-identity union + sort as FileStore,
+  no TOCTOU between read and condition), sets `revision = stored.revision + 1`
+  (or 1 when absent), and keeps scalars last-writer-wins. Row `version` still
+  carries the optimistic-concurrency guard.
+- **`update_ticket`** bumps `revision = stored.revision + 1` inside each CAS
+  attempt — no separate put pass, so a lost race retries from fresh state.
+- Two new moto regression tests: `update_ticket` revision bump +
+  stale-writer rebase merge (both writers' events survive, timeline sorted,
+  revision == 3). Suite now **50 passed** in this worktree's venv.
+- One naming trap for future reference: `Actor.PM`, not `PROPERTY_MANAGER`.
+
+Merge order unchanged: add `moto[dynamodb]>=5.0` to dev extras, then take the
+branch; config/web-app diffs above still apply as-is.
