@@ -48,20 +48,10 @@ def run_request(
 
 
 def run_request_with_coordinator(store: Store, coordinator, payload: dict) -> WorkOrder:
-    """LLM-driven path: a Strands Agent with tool access owns the ticket loop.
+    """Agent-driven path: a Strands Agent with tool access owns the ticket loop.
     Intake + tenant ack stay deterministic (guaranteed within 60s benchmark);
     the agent does triage through dispatch."""
-    t = _intake_only(store, payload)
-    ack_tools: HandoffTools = coordinator.tools
-    ack_tools.message_tenant(
-        t.id,
-        "ack",
-        (
-            f"Got it — we've received your report about unit {t.unit} and it's in the queue now. "
-            f"You'll hear back shortly with next steps. Reply here if anything changes."
-        ),
-        idem_key=f"{t.id}:ack",
-    )
+    t = engine.intake_request(store, coordinator.tools, payload)
     coordinator.handle_request(
         {"ticket_id": t.id, "unit": t.unit, "raw": t.raw_request, "photos": t.photo_descriptions}
     )

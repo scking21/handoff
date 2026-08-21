@@ -42,12 +42,24 @@ class DashboardState:
         self.triage = get_triage_provider(settings.model_provider)
         self.scheduler = SchedulerService(self.tools, interval_seconds=300)
         self.coordinator = None
-        if settings.model_provider == "bedrock":
+        if settings.model_provider in ("bedrock", "scripted"):
             from handoff.agents.coordinator import CoordinatorAgent
-            from strands.models import BedrockModel
 
-            model = BedrockModel(model_id=settings.bedrock_model_id, region_name=settings.aws_region)
-            self.coordinator = CoordinatorAgent(self.tools, model=model)
+            model = None
+            if settings.model_provider == "bedrock":
+                from strands.models import BedrockModel
+
+                model = BedrockModel(model_id=settings.bedrock_model_id, region_name=settings.aws_region)
+            else:
+                from handoff.agents.scripted_model import ScriptedModelProvider
+
+                model = ScriptedModelProvider(approval_threshold=settings.approval_threshold)
+            from handoff.agents.audit_hook import ToolTraceHook
+
+            self.coordinator = CoordinatorAgent(
+                self.tools, model=model,
+                trace_hook=ToolTraceHook(path=Path(settings.data_dir) / "tool_trace.jsonl"),
+            )
         if not self.store.list_properties():
             seed_world(self.store)
 
