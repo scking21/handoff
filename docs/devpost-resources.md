@@ -9,7 +9,7 @@ Cross-referenced against `AGENT-TASKS.md`. Items marked ★ are action items.
 |------|------|-------|
 | ✅ **AWS credits request — APPLIED (Corby, 2026-08-21)** | Sep 11, 2026, 12:00pm PT | Deadline was NOT in AGENT-TASKS.md — 3 days before the hackathon deadline. Form: https://forms.gle/Ssr8zLw4afKg114M7 — $50 AWS promotional credits for registered participants, while supplies last. Subject to https://aws.amazon.com/awscredits/ terms. |
 | Submission deadline | Sep 14, 2026, 5:00pm PDT | Matches AGENT-TASKS.md. |
-| AWS account signup | ASAP | AGENT-TASKS notes AWS credentials don't exist yet; everything runs offline via the heuristic provider until they land. Credits request requires a registered participant account. |
+| ✅ AWS project active (resolved 2026-08-21) | — | Project live in us-east-2; Bedrock wired via `HANDOFF_MODEL_PROVIDER=bedrock` (Nova Lite); **$100 credits remaining** per build log. |
 
 ## Setup & required tools
 
@@ -50,8 +50,8 @@ design — usable framing even from the Pro track.
 
 ## Ordered action items
 
-1. ~~Request AWS credits before Sep 11, 12:00pm PT~~ — ✅ APPLIED 2026-08-21; watch for the credits landing in the AWS account, then wire credentials behind `HANDOFF_MODEL_PROVIDER=bedrock`.
-2. Create AWS account → wire real credentials behind `HANDOFF_MODEL_PROVIDER=bedrock`.
-3. Follow the Strands→AgentCore Runtime quickstart to get a live deploy for the demo.
+1. ~~Request AWS credits before Sep 11, 12:00pm PT~~ — ✅ DONE: applied 2026-08-21 and credits landed ($100 remaining on the FREE plan).
+2. ~~Create AWS account → wire real credentials behind `HANDOFF_MODEL_PROVIDER=bedrock`.~~ — ✅ DONE 2026-08-21 (Nova Lite default; Claude Sonnet pending Corby's one-time Anthropic form).
+3. ~~Follow the Strands→AgentCore Runtime quickstart to get a live deploy for the demo.~~ — ✅ DONE 2026-08-21: AgentCore Runtime live + public judges' dashboard URL verified from the open internet.
 4. Feed the observability deep dive into Stream E #2 (OTel flag).
-5. Queue a builder.aws.com post (rubric bonus +0.6) once the AgentCore deploy story exists.
+5. **Queue builder.aws.com posts ×3 (rubric bonus +0.6)** — drafts are READY in docs/blog/ as of this reality-sync pass; needs Corby's builder.aws.com account to publish.

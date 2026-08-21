@@ -1,7 +1,7 @@
 # An agent you can operate: three patterns that survive 3 a.m.
 
 > builder.aws.com post 2 of 3 · reliability deep-dive
-> Status: DRAFT — publish after Bedrock integration is verified
+> Status: READY — patterns proven on live Bedrock + AgentCore 2026-08-21 (see sections 1–2)
 
 An agent that works in a demo and an agent you can operate are different
 artifacts. The demo has to succeed once. Operations needs it to fail in ways
@@ -53,7 +53,13 @@ if "APPROVAL" not in r1:
     assert len(msgs) == 1, "dispatch offer must be sent exactly once"
 ```
 
-Fire the same dispatch twice, assert exactly one vendor offer exists.
+Fire the same dispatch twice, assert exactly one vendor offer exists. On the
+first live Bedrock run this stopped being hypothetical: Nova Lite worked the
+policy perfectly through triage, quotes, and creating an approval gate — then
+tried to dispatch the vendor anyway. The tool layer refused the call (no
+approved-gate precondition, no dispatch) and the ticket ended
+AWAITING_APPROVAL exactly per policy. A real LLM pushed on the wall; the wall
+held.
 
 ## 2. Approval gates that survive restarts
 
@@ -83,8 +89,11 @@ no stale price, and a duplicate resume is a no-op thanks to pattern 1.
 This maps cleanly onto AWS's durable-orchestration guidance (Step Functions'
 `.waitForTaskToken`). At our scale the ticket store plays the durable-wait
 role, which keeps the whole pattern testable in CI with zero cloud
-dependencies. When we move to Bedrock AgentCore, the contract doesn't change —
-only the store behind it does.
+dependencies. That bet paid off on deploy day: Handoff now runs on Bedrock
+AgentCore with DynamoDB behind the same contract, and the gate survived its
+first real distributed test — a ticket gated in one browser session became
+visible to another session, was approved there, and the dispatch replayed
+exactly what had been persisted. No re-search, no stale price.
 
 ## 3. Escalation as a capability, not an error path
 
@@ -114,9 +123,9 @@ stays background.
 
 ## What this buys
 
-Nine tests cover happy path, crash-retry, durable approval, decline-reroute,
-invoice discrepancy, low-confidence triage, and the nightly sweep — all green
-in under four seconds, against the same code that runs in the demo. No mocks of
-the reliability layer, no "we'll add tests later." If a judge (or a property
-manager) asks what happens when the process dies mid-dispatch, the answer is a
-test name, not a promise.
+Fifty-plus tests cover happy path, crash-retry, durable approval,
+decline-reroute, invoice discrepancy, low-confidence triage, and the nightly
+sweep — green in seconds, against the same code that runs the live demo. No
+mocks of the reliability layer, no "we'll add tests later." If a judge (or a
+property manager) asks what happens when the process dies mid-dispatch, the
+answer is a test name, not a promise.

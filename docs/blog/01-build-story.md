@@ -1,7 +1,7 @@
 # Building Handoff: the agent that takes the 2 a.m. maintenance call
 
 > builder.aws.com post 1 of 3 · "Agents for Humans" hackathon build story
-> Status: DRAFT — publish after Bedrock integration is verified
+> Status: READY — Bedrock integration verified live 2026-08-21; public demo up (see end)
 
 Every property manager knows the 2 a.m. ceiling-flood text. Here's what nobody
 says out loud: the repair was never the expensive part. The fifteen handoffs
@@ -32,8 +32,10 @@ Three requirements killed every simpler option:
    (`urgency`, `category`, `confidence`), not parsed prose. Below the
    confidence floor the ticket routes to a human queue instead of guessing.
 3. **Model-provider portability.** Same agent code runs against Amazon Bedrock
-   Claude in production and a deterministic rules provider in tests. Our CI
-   never calls a model; our demo always does.
+   in production and a deterministic rules provider in tests. Our CI never
+   calls a model; our demo always does. And the portability is real, not
+   aspirational: the live provider started as Nova Lite (Claude Sonnet ready
+   behind a config flag), and switching models never touched the agent code.
 
 That third one sounds like a nice-to-have until you try to test an agent. More
 on that in the evals post.
@@ -79,13 +81,18 @@ both assume side effects are keyed and replayable.
 
 ## Run it yourself
 
-The repo is MIT-licensed and runs locally without credentials or API keys:
+The repo is MIT-licensed, public at github.com/scking21/handoff, and still runs
+locally without credentials or API keys — same code that serves the live demo:
 
 ```bash
 uv venv --python 3.13 .venv && uv pip install -e ".[dev]"
-.venv/bin/python -m pytest tests/     # reliability core: 9 tests
+.venv/bin/python -m pytest tests/     # full suite, 50+ tests
 .venv/bin/python -m handoff.demo      # intake → triage → quotes → dispatch/gate
 ```
+
+Prefer clicking to cloning? The deployed system (API Gateway → Lambda →
+DynamoDB + Bedrock AgentCore) is public:
+https://0fmmk8vbt0.execute-api.us-east-2.amazonaws.com/
 
 Posts 2 and 3 cover the parts we're proudest of: how the approval gate survives
 restarts, and how triage judgment gets tested like code.

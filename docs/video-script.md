@@ -18,9 +18,20 @@
 
 ## Shot list (record later)
 - [ ] Clean dashboard state (fresh world seed)
+- [ ] Record the product surface against the LIVE judges' URL, not localhost:
+      https://0fmmk8vbt0.execute-api.us-east-2.amazonaws.com/
 - [ ] Terminal: pytest green + evals output
 - [ ] Architecture diagram full-screen
 - [ ] All interactions at 100% zoom, cursor visible
+
+Recording gotchas (from the live deploys, 2026-08-21):
+- Use a FRESH runtime session ID per take — a reused ID lands on the warm old
+  instance (previous code, stale /tmp state). Durable ticket state lives in
+  DynamoDB either way.
+- Submissions drive a real multi-step LLM loop and can take tens of seconds;
+  script the wait (cut or timelapse) instead of recording dead air.
+- The public board is live for everyone — if it looks odd mid-take, another
+  visitor may have submitted between shots.
 
 ## Cold-open variants (first 30 seconds)
 

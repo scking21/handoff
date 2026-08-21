@@ -1,7 +1,7 @@
 # Agent judgment is testable. Test it like code.
 
 > builder.aws.com post 3 of 3 · evals gate
-> Status: DRAFT — publish after Bedrock triage evals run on the live model
+> Status: READY — the live-model run happened: Nova Lite 75% → 100% through this exact gate (see end)
 
 "Does the agent classify emergencies correctly?" is not a vibe question, and
 eyeballing a demo doesn't answer it. Before Handoff (our Agents for Humans
@@ -15,8 +15,8 @@ ceiling flood, a gas smell near the stove, "the AC makes a weird noise
 sometimes," a locked-out tenant standing outside with groceries. Eight
 scenarios so far, each carrying expected urgency and category labels. The eval
 runner replays every scenario through whatever provider is configured —
-deterministic rules in CI, Claude via Amazon Bedrock before deploy — and scores
-both axes:
+deterministic rules in CI, the hosted model via Amazon Bedrock before deploy —
+and scores both axes:
 
 ```python
 def evaluate(provider: TriageProvider) -> dict:
@@ -103,7 +103,19 @@ that drives classification:
   indicate the trade that must respond, not the location of the symptom.
 
 None of those were model problems. They were specification problems, and the
-harness surfaced each one in seconds. That's the argument of this whole post:
-agent judgment is testable, and the test belongs in the same pipeline as
-everything else you ship. When the Bedrock provider lands, nothing about the
-gate changes — the model just has to clear the same bar the rules did.
+harness surfaced each one in seconds.
+
+## Then the real model sat for the same exam
+
+When Handoff went live on Amazon Bedrock, the gate got its true test. First
+run of Nova Lite on the same eight scenarios: **75%** — a real model scoring
+below the bar the heuristics had set, caught in minutes by the same runner,
+with zero tenants involved and nothing shipped. The fix was the same kind of
+fix as the hint-table misses above: sharpen the specification. A tightened
+prompt with few-shot examples later, the same model scored **100% on urgency
+and category** on the same library, gated by the same floors.
+
+Nothing about the pipeline changed when the provider switched from rules to a
+hosted LLM. That's the argument of this whole post: agent judgment is
+testable, and the test belongs in the same pipeline as everything else you
+ship — especially for the parts you didn't write.
