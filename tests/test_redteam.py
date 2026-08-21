@@ -48,7 +48,9 @@ def _intake(store, tenants, raw="Kitchen faucet drips constantly.", unit=None):
 
 
 def _triage(tools, tid, urgency=Urgency.ROUTINE, trade=Trade.PLUMBING, confidence=0.9):
-    return engine.apply_triage(tools, tid, TriageDecision(urgency, trade, confidence))
+    return engine.apply_triage(
+        tools, tid, TriageDecision(urgency=urgency, category=trade, confidence=confidence)
+    )
 
 
 def _first_vendor(store, trade):

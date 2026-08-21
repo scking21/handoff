@@ -1,0 +1,62 @@
+default_agent: handoff
+agents:
+  handoff:
+    name: handoff
+    language: python
+    node_version: '20'
+    entrypoint: /Volumes/1/Hackathons/Agents for Humans/handoff/agent.py
+    deployment_type: direct_code_deploy
+    runtime_type: PYTHON_3_13
+    platform: linux/arm64
+    container_runtime: null
+    source_path: /Volumes/1/Hackathons/Agents for Humans/handoff
+    aws:
+      execution_role: arn:aws:iam::117425832118:role/AmazonBedrockAgentCoreSDKRuntime-us-east-2-249215fed8
+      execution_role_auto_create: false
+      account: '117425832118'
+      region: us-east-2
+      ecr_repository: null
+      ecr_auto_create: false
+      s3_path: s3://bedrock-agentcore-codebuild-sources-117425832118-us-east-2
+      s3_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: true
+      lifecycle_configuration:
+        idle_runtime_session_timeout: null
+        max_lifetime: null
+    bedrock_agentcore:
+      agent_id: handoff-q2EuuN6eFL
+      agent_arn: arn:aws:bedrock-agentcore:us-east-2:117425832118:runtime/handoff-q2EuuN6eFL
+      agent_session_id: null
+    codebuild:
+      project_name: null
+      execution_role: null
+      source_bucket: null
+    memory:
+      mode: STM_ONLY
+      memory_id: handoff_mem-clB9oQBnhE
+      memory_arn: arn:aws:bedrock-agentcore:us-east-2:117425832118:memory/handoff_mem-clB9oQBnhE
+      memory_name: handoff_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: true
+      was_created_by_toolkit: true
+    identity:
+      credential_providers: []
+      workload: null
+    aws_jwt:
+      enabled: false
+      audiences: []
+      signing_algorithm: ES384
+      issuer_url: null
+      duration_seconds: 300
+    authorizer_configuration: null
+    request_header_configuration: null
+    oauth_configuration: null
+    api_key_env_var_name: null
+    api_key_credential_provider_name: null
+    is_generated_by_agentcore_create: false
