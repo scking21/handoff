@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -18,7 +20,8 @@ from handoff.agents.decisions import get_triage_provider
 from handoff.config import settings
 from handoff.data.synth.generate import SCENARIOS, make_request, seed_world
 from handoff.domain.models import Actor, TicketStatus
-from handoff.pipeline import run_request
+from handoff.pipeline import run_request, run_request_with_coordinator
+from handoff.scheduler.service import SchedulerService
 from handoff.store.base import FileStore
 from handoff.tools.toolkit import HandoffTools
 from handoff.workflow import engine
@@ -37,12 +40,29 @@ class DashboardState:
         self.store = FileStore(root=settings.data_dir)
         self.tools = HandoffTools(self.store, approval_threshold=settings.approval_threshold)
         self.triage = get_triage_provider(settings.model_provider)
+        self.scheduler = SchedulerService(self.tools, interval_seconds=300)
+        self.coordinator = None
+        if settings.model_provider == "bedrock":
+            from handoff.agents.coordinator import CoordinatorAgent
+            from strands.models import BedrockModel
+
+            model = BedrockModel(model_id=settings.bedrock_model_id, region_name=settings.aws_region)
+            self.coordinator = CoordinatorAgent(self.tools, model=model)
         if not self.store.list_properties():
             seed_world(self.store)
 
 
 state = DashboardState()
-app = FastAPI(title="Handoff", docs_url=None, redoc_url=None)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    state.scheduler.start()
+    yield
+    state.scheduler.stop()
+
+
+app = FastAPI(title="Handoff", docs_url=None, redoc_url=None, lifespan=lifespan)
 
 
 def _vendor_name(vendor_id: str | None) -> str:
@@ -86,7 +106,10 @@ def ticket_detail(request: Request, ticket_id: str):
 @app.post("/tickets/new")
 def new_ticket(scenario: str = Form(...), after_hours: bool = Form(False)):
     payload = make_request(state.store, scenario)
-    run_request(state.store, state.tools, state.triage, payload, after_hours=after_hours)
+    if state.coordinator is not None:
+        run_request_with_coordinator(state.store, state.coordinator, payload)
+    else:
+        run_request(state.store, state.tools, state.triage, payload, after_hours=after_hours)
     return RedirectResponse("/", status_code=303)
 
 
@@ -130,5 +153,5 @@ def tenant_verify(ticket_id: str, ok: bool = Form(True)):
 
 @app.post("/sweep")
 def sweep():
-    actions = engine.nightly_sweep(state.tools)
+    actions = state.scheduler.tick_once()
     return {"actions": actions}

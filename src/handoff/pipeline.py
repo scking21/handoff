@@ -45,3 +45,40 @@ def run_request(
 
     engine.gate_and_dispatch(tools, t.id, choice, after_hours=after_hours)
     return store.get_ticket(t.id)
+
+
+def run_request_with_coordinator(store: Store, coordinator, payload: dict) -> WorkOrder:
+    """LLM-driven path: a Strands Agent with tool access owns the ticket loop.
+    Intake + tenant ack stay deterministic (guaranteed within 60s benchmark);
+    the agent does triage through dispatch."""
+    t = _intake_only(store, payload)
+    ack_tools: HandoffTools = coordinator.tools
+    ack_tools.message_tenant(
+        t.id,
+        "ack",
+        (
+            f"Got it — we've received your report about unit {t.unit} and it's in the queue now. "
+            f"You'll hear back shortly with next steps. Reply here if anything changes."
+        ),
+        idem_key=f"{t.id}:ack",
+    )
+    coordinator.handle_request(
+        {"ticket_id": t.id, "unit": t.unit, "raw": t.raw_request, "photos": t.photo_descriptions}
+    )
+    return store.get_ticket(t.id)
+
+
+def _intake_only(store: Store, payload: dict) -> WorkOrder:
+    from handoff.domain.models import Actor, WorkOrder
+
+    t = WorkOrder(
+        property_id=payload["property_id"],
+        unit=payload["unit"],
+        tenant_id=payload["tenant_id"],
+        raw_request=payload["raw"],
+        photo_descriptions=payload.get("photos", []),
+    )
+    store.put_ticket(t)
+    t.record(Actor.TENANT, "request_received", payload["raw"][:80])
+    store.put_ticket(t)
+    return t
