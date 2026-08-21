@@ -7,6 +7,10 @@ the Bedrock-backed provider before deploy — an eval gate, not vibes.
 
 from __future__ import annotations
 
+import json
+import statistics
+import time
+
 from handoff.agents.decisions import TriageProvider, get_triage_provider
 from handoff.config import settings
 from handoff.data.synth.generate import SCENARIOS
@@ -14,8 +18,11 @@ from handoff.data.synth.generate import SCENARIOS
 
 def evaluate(provider: TriageProvider) -> dict:
     rows = []
+    latencies: list[float] = []
     for scen in SCENARIOS:
+        t0 = time.perf_counter()
         d = provider.classify(scen["raw"], list(scen["photos"]))
+        latencies.append(time.perf_counter() - t0)
         rows.append(
             {
                 "scenario": scen["key"],
@@ -30,6 +37,8 @@ def evaluate(provider: TriageProvider) -> dict:
         "n": n,
         "urgency_accuracy": sum(r["urgency_ok"] for r in rows) / n,
         "category_accuracy": sum(r["category_ok"] for r in rows) / n,
+        "latency_p50_s": round(statistics.median(latencies), 3),
+        "latency_max_s": round(max(latencies), 3),
         "rows": rows,
     }
 
@@ -45,4 +54,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    if "--json" in sys.argv:
+        print(json.dumps(evaluate(get_triage_provider(settings.model_provider))))
+    else:
+        main()

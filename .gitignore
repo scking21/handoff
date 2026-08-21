@@ -31,3 +31,7 @@ data/runtime/
 .idea/
 .vscode/
 .bedrock_agentcore/
+
+# autoresearch artifacts
+results.tsv
+run.log

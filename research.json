@@ -1,0 +1,20 @@
+{
+  "tag": "aug21",
+  "goal": "Maximize live-model triage accuracy on the v2 judgment-heavy library while holding latency low",
+  "run_command": ".venv/bin/python -m handoff.evals.triage_evals --json",
+  "metric": {
+    "primary": "urgency_accuracy",
+    "secondary": ["category_accuracy", "latency_p50_s"],
+    "direction": "higher",
+    "keep_rule": "urgency improves AND category >= baseline_category - 0.05 AND p50 <= baseline_p50 * 3"
+  },
+  "modifiable_files": ["src/handoff/agents/decisions.py"],
+  "readonly_files": [
+    "src/handoff/evals/triage_evals.py",
+    "src/handoff/data/synth/generate.py",
+    "src/handoff/workflow/engine.py"
+  ],
+  "timeout_seconds": 300,
+  "no_new_dependencies": true,
+  "notes": "Baseline @ main: urgency 0.64, category 0.91, p50 0.616s (live Nova Lite us-east-2). All misses are urgency undertriages."
+}

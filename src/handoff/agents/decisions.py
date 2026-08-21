@@ -77,13 +77,18 @@ class LLMTriageProvider:
         "You are the triage brain for a property-management maintenance coordinator. "
         "Classify each tenant maintenance report.\n"
         "URGENCY — emergency: active water intrusion (pouring/flooding/ceiling water), gas odor, "
-        "electrical sparking/burning, lockout (tenant cannot enter), sewage backup, anything "
-        "immediately habitability-threatening. "
-        "urgent: primary systems down (heat in cold weather, no hot water), safety-adjacent "
-        "(dead outlet WITHOUT sparking, broken exterior door/window). routine: everything else.\n"
+        "electrical sparking/burning/smoke from fixtures or switches, burning smells from equipment, "
+        "smoke or carbon-monoxide detector activation, whole-unit power loss, lockout, sewage backup, "
+        "anything immediately habitability-threatening. "
+        "urgent: primary systems down (heat in cold weather, no hot water anywhere in the unit), "
+        "safety-adjacent hazards (dead outlet WITHOUT sparking, broken exterior door/window, broken "
+        "glass on premises, loose/failing door locks), active slow leaks (growing ceiling stains, "
+        "drain backups crossing fixtures). routine: cosmetic issues, pests, single-fixture "
+        "annoyances that cause no damage or hazard.\n"
         "CATEGORY — one of plumbing, hvac, electrical, appliance, general, locksmith. "
         "Appliance fixtures (dishwasher, fridge, oven, washer) are appliance, NOT plumbing, even "
-        "when they leak. Lockouts are locksmith.\n"
+        "when they leak. Lockouts AND failing door locks are locksmith. Detector/safety-device "
+        "issues with no single trade are general.\n"
         "CONFIDENCE — 0..1; below 0.55 the ticket goes to a human instead of you, so be honest "
         "when the description is too vague to judge severity.\n"
         "Examples:\n"
@@ -91,16 +96,29 @@ class LLMTriageProvider:
         "- 'I smell gas near the stove' -> emergency/plumbing\n"
         "- 'Outlet sparked when I plugged in my hairdryer' -> emergency/electrical\n"
         "- 'Locked myself out, standing outside' -> emergency/locksmith\n"
-        "- 'Heater hasn't worked since yesterday, it's freezing' -> urgent/hvac\n"
+        "- 'Smoke coming out of my bedroom light switch' -> emergency/electrical\n"
+        "- 'Carbon monoxide detector keeps beeping' -> emergency/general\n"
+        "- 'Whole apartment lost power after the storm' -> emergency/electrical\n"
+        "- 'Heater works but there is a burning smell at startup' -> emergency/hvac\n"
+        "- 'Brown ceiling stain getting bigger over the week' -> urgent/plumbing\n"
+        "- 'Dirty water backs into the kitchen sink when the washer drains' -> urgent/plumbing\n"
+        "- 'Shower only runs cold, other taps get hot water' -> urgent/plumbing\n"
+        "- 'Front door lock is loose and does not always latch' -> urgent/locksmith\n"
+        "- 'Broken glass shelf shattered into the hallway carpet' -> urgent/general\n"
+        "- 'Fridge stopped cooling but interior light works' -> urgent/appliance\n"
         "- 'AC making a weird rattle sometimes' -> routine/hvac\n"
         "- 'Dishwasher leaks onto the floor when it runs' -> routine/appliance\n"
+        "- 'Toilet keeps running unless you jiggle the handle' -> routine/plumbing\n"
+        "- 'Wasp nest forming above the front door' -> routine/general\n"
         "Respond with the structured classification only."
     )
 
     def __init__(self, model=None):
         from strands import Agent
 
-        self.agent = Agent(model=model, system_prompt=self.SYSTEM_PROMPT)
+        # callback_handler=None silences the default tool-call printer —
+        # required for programmatic (--json) eval output.
+        self.agent = Agent(model=model, system_prompt=self.SYSTEM_PROMPT, callback_handler=None)
 
     def classify(self, raw_request: str, photo_descriptions: list[str]) -> TriageDecision:
         prompt = raw_request
