@@ -11,12 +11,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from pydantic import BaseModel
+
 from handoff.domain.models import Actor, TicketStatus, Trade, Urgency, WorkOrder
 from handoff.tools.toolkit import HandoffTools, utcnow
 
 
-@dataclass
-class TriageDecision:
+class TriageDecision(BaseModel):
+    """Pydantic (not dataclass): Strands structured_output requires
+    model_json_schema for tool-spec conversion."""
+
     urgency: Urgency
     category: Trade
     confidence: float
