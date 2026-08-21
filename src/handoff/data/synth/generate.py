@@ -110,7 +110,7 @@ SCENARIOS: list[dict] = [
         "key": "broken_outlet",
         "raw": "Outlet in the bathroom sparked when I plugged in my hairdryer and now it doesn't work at all.",
         "photos": ["scorch mark on outlet cover"],
-        "expect_urgency": Urgency.URGENT,
+        "expect_urgency": Urgency.EMERGENCY,  # sparking + scorch = electrical hazard
         "expect_category": Trade.ELECTRICAL,
     },
     {

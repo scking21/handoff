@@ -16,18 +16,25 @@ from handoff.workflow.engine import TriageDecision
 
 EMERGENCY_HINTS = [
     "pouring", "flooding", "burst", "water everywhere", "ceiling", "gas smell",
-    "smell gas", "sparked", "spark", "smoke", "locked out", "sewage", "no water",
+    "smell gas", "sparked", "spark", "smoke", "locked out", "locked myself out",
+    "standing outside", "sewage", "no water",
 ]
 URGENT_HINTS = [
     "no heat", "freezing", "hasn't worked since yesterday", "no hot water",
     "doesn't work at all", "outlet", "broken window", "leaking",
 ]
-CATEGORY_HINTS: list[tuple[Trade, list[str]]] = [
-    (Trade.PLUMBING, ["water", "leak", "faucet", "pipe", "drain", "toilet", "gas"]),
-    (Trade.HVAC, ["heat", "heater", "ac ", "air conditioning", "thermostat", "furnace", "rattle"]),
-    (Trade.ELECTRICAL, ["outlet", "spark", "power", "light fixture", "breaker", "wiring"]),
-    (Trade.APPLIANCE, ["dishwasher", "fridge", "refrigerator", "oven", "washer", "dryer", "garbage disposal"]),
-    (Trade.LOCKSMITH, ["locked out", "lock", "key broke", "door won't open"]),
+# (trade, [(hint, weight)]) — specific fixtures outrank generic symptoms
+CATEGORY_HINTS: list[tuple[Trade, list[tuple[str, int]]]] = [
+    (Trade.APPLIANCE, [("dishwasher", 3), ("fridge", 3), ("refrigerator", 3), ("oven", 3),
+                        ("garbage disposal", 3), ("washer", 2), ("dryer", 2)]),
+    (Trade.LOCKSMITH, [("locked out", 3), ("locked myself out", 3), ("key broke", 3), ("door won't open", 2)]),
+    (Trade.ELECTRICAL, [("outlet", 2), ("spark", 2), ("power", 1), ("light fixture", 1),
+                         ("breaker", 2), ("wiring", 2)]),
+    (Trade.HVAC, [("heat", 2), ("heater", 2), ("ac ", 2), ("air conditioning", 2),
+                   ("thermostat", 2), ("furnace", 2), ("rattle", 1)]),
+    (Trade.PLUMBING, [("pouring", 3), ("ceiling", 2), ("water", 1), ("leak", 1),
+                       ("faucet", 1), ("pipe", 1), ("drain", 1), ("toilet", 1), ("gas", 1)]),
+    (Trade.GENERAL, []),
 ]
 
 
@@ -45,7 +52,7 @@ class HeuristicTriageProvider:
 
         category, cat_hits = Trade.GENERAL, 0
         for trade, hints in CATEGORY_HINTS:
-            n = sum(1 for h in hints if h in text)
+            n = sum(w for h, w in hints if h in text)
             if n > cat_hits:
                 category, cat_hits = trade, n
 
