@@ -8,6 +8,8 @@ build step.
 
 from __future__ import annotations
 
+import threading
+import time
 from pathlib import Path
 
 from contextlib import asynccontextmanager
@@ -33,6 +35,38 @@ STATUS_ORDER = [
     TicketStatus.DISPATCHED, TicketStatus.SCHEDULED, TicketStatus.IN_PROGRESS,
     TicketStatus.COMPLETED, TicketStatus.CLOSED, TicketStatus.EXCEPTION,
 ]
+
+
+MAX_OPEN_TICKETS = 120  # public demo: cap paid inference surface
+RATE_LIMIT = 6          # submissions per IP per window
+WINDOW_SECONDS = 300.0
+
+
+class RateLimiter:
+    """In-memory fixed-window limiter. Demo-grade: resets on restart, per-instance."""
+
+    def __init__(self) -> None:
+        self._hits: dict[str, list[float]] = {}
+        self._lock = threading.Lock()
+
+    def allow(self, key: str) -> bool:
+        now = time.time()
+        with self._lock:
+            hits = [t for t in self._hits.get(key, []) if now - t < WINDOW_SECONDS]
+            if len(hits) >= RATE_LIMIT:
+                self._hits[key] = hits
+                return False
+            hits.append(now)
+            self._hits[key] = hits
+            return True
+
+
+limiter = RateLimiter()
+
+
+def client_key(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    return (fwd.split(",")[0].strip() if fwd else None) or (request.client.host if request.client else "unknown")
 
 
 class DashboardState:
@@ -125,7 +159,15 @@ def ticket_detail(request: Request, ticket_id: str):
 
 
 @app.post("/tickets/new")
-def new_ticket(scenario: str = Form(...), after_hours: bool = Form(False)):
+def new_ticket(request: Request, scenario: str = Form(...), after_hours: bool = Form(False)):
+    if not limiter.allow(client_key(request)):
+        return HTMLResponse("Slow down — try again in a few minutes.", status_code=429)
+    open_count = sum(
+        1 for t in state.store.list_tickets()
+        if t.status not in (TicketStatus.CLOSED, TicketStatus.VERIFIED, TicketStatus.DECLINED_BY_TENANT)
+    )
+    if open_count >= MAX_OPEN_TICKETS:
+        return HTMLResponse("Demo at capacity — please enjoy the existing tickets.", status_code=503)
     payload = make_request(state.store, scenario)
     if state.coordinator is not None:
         run_request_with_coordinator(state.store, state.coordinator, payload)

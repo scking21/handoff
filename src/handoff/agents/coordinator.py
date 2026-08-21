@@ -35,6 +35,8 @@ Finish with a one-line summary of the outcome."""
 class CoordinatorAgent:
     def __init__(self, tools: HandoffTools, model=None, trace_hook=None):
         from strands import Agent
+        from strands.agent.conversation_manager import SlidingWindowConversationManager
+        from strands import ModelRetryStrategy
 
         self.tools = tools
         hooks = [trace_hook] if trace_hook is not None else None
@@ -43,6 +45,11 @@ class CoordinatorAgent:
             system_prompt=POLICY.replace("$APPROVAL_THRESHOLD", str(tools.approval_threshold)),
             tools=tools.all(),
             hooks=hooks,
+            # Best practice (Strands docs): bound the loop's context growth and
+            # keep throttle-retries inside a serverless time budget. A strategy
+            # instance carries per-turn state — one per agent, never shared.
+            conversation_manager=SlidingWindowConversationManager(window_size=40),
+            retry_strategy=ModelRetryStrategy(max_attempts=4, initial_delay=2, max_delay=30),
         )
 
     def handle_request(self, payload: dict) -> str:
