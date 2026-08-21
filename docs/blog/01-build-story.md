@@ -1,47 +1,91 @@
-# Draft: Building Handoff — an autonomous maintenance coordinator with Strands Agents SDK
+# Building Handoff: the agent that takes the 2 a.m. maintenance call
 
 > builder.aws.com post 1 of 3 · "Agents for Humans" hackathon build story
 > Status: DRAFT — publish after Bedrock integration is verified
 
-Every property manager knows the 6:40 a.m. water heater call. What they know less
-formally is that the pain was never the repair — it's the fifteen handoffs around it:
-triage from a voicemail, vendor phone tag, quote chasing, tenant scheduling, status
-checks, invoice matching. Industry data puts it at 3.2 hours per manager per day,
-and it's the top driver of both negative reviews and non-renewals.
+Every property manager knows the 2 a.m. ceiling-flood text. Here's what nobody
+says out loud: the repair was never the expensive part. The fifteen handoffs
+around it are. Triage the voicemail. Phone-tag three vendors. Chase two quotes,
+take the third because the first two never called back. Schedule around a
+tenant's work shift. Check status. Chase status again. Reconcile an invoice
+that doesn't match the quote. Multiply by a few hundred doors and coordination
+stops being part of the job — it becomes the job. Which is backwards: the
+manager should be the exception handler, not the router.
 
-For the Agents for Humans hackathon we built **Handoff**: an agent that owns those
-handoffs end to end, runs quietly in the background, and only interrupts the property
-manager when there's a real decision — spend above policy threshold, an after-hours
-emergency dispatch, or a request too ambiguous to classify safely.
+For the Agents for Humans hackathon we built **Handoff**, an agent that owns
+those handoffs end to end. It runs in the background and surfaces only when a
+human actually needs to weigh in: spend above the policy threshold, an
+after-hours emergency dispatch, or a report too ambiguous to classify safely.
+Everything else — tenant ack, triage, price discovery, dispatch, scheduling
+nudges, closeout verification, invoice matching — it handles on its own.
 
 ## Why Strands Agents
 
-Strands gave us three things the architecture needed on day one:
+Three requirements killed every simpler option:
 
-1. **A real agent loop with tool calling.** The Coordinator Agent receives a raw
-   tenant report and works the problem: look up context, classify severity, search
-   the vendor bench, collect quotes, dispatch or gate. We didn't want a chain of
-   prompts; we wanted an agent that decides *how* to get to "dispatched."
-2. **Structured output.** Triage decisions come back typed (`urgency`, `category`,
-   `confidence`) instead of parsed prose. Below a confidence floor the ticket routes
-   to a human queue rather than guessing — escalation as a designed capability.
-3. **Model-provider portability.** The same agent code runs against Amazon Bedrock
-   Claude in production and a deterministic provider in tests. Our CI never calls a
-   model; our demo always does.
+1. **A real agent loop, not a prompt chain.** A chain breaks the first time a
+   vendor declines or a quote comes back weird — the recovery path isn't a
+   branch you predicted, it's a decision. The Coordinator Agent gets tools and
+   a policy, and works the problem: look up context, classify severity, search
+   the bench, collect quotes, dispatch or gate.
+2. **Structured output for judgment calls.** Triage comes back typed
+   (`urgency`, `category`, `confidence`), not parsed prose. Below the
+   confidence floor the ticket routes to a human queue instead of guessing.
+3. **Model-provider portability.** Same agent code runs against Amazon Bedrock
+   Claude in production and a deterministic rules provider in tests. Our CI
+   never calls a model; our demo always does.
 
-## The design rule that shaped everything
+That third one sounds like a nice-to-have until you try to test an agent. More
+on that in the evals post.
 
-**Probabilistic reasoning, deterministic mechanics.** The LLM never mutates ticket
-state directly. Every side effect — dispatching a vendor, messaging a tenant,
-creating an approval gate — goes through tools keyed by an idempotency key. Retry
-the workflow after a crash and a replayed tool call returns the recorded outcome
-instead of double-texting a tenant at midnight.
+## The policy is the product
 
-The full architecture, the durable approval-gate pattern, and what the Strands
-agent loop looks like in practice are covered in the follow-up posts in this series.
+Here's the system prompt the Coordinator Agent runs on — abridged, but this is
+the actual text from `src/handoff/agents/coordinator.py`:
 
-## Try it
+```python
+POLICY = """You are Handoff, the maintenance-coordination agent for a property-management firm.
+You handle each incoming tenant request END TO END using your tools. Work autonomously;
+only stop when the ticket is dispatched, gated for approval, or escalated.
 
-The repo is MIT-licensed and runs locally without credentials:
-`pytest` proves the reliability core; `python -m handoff.demo` walks four scenarios
-through intake → triage → price discovery → dispatch/gate.
+POLICY
+- Triage urgency: emergency = active water intrusion, gas odor, sparking/burning electrical,
+  lockout, sewage backup. urgent = primary systems down (heat in cold weather, no hot water),
+  safety-adjacent (dead outlet). routine = everything else.
+- If confidence < 0.55 after reading the request, call escalate_to_human instead of guessing.
+- search_vendors for the trade, then request_quote from the best 2-3 candidates.
+- If the quoted price exceeds $APPROVAL_THRESHOLD, call create_approval_gate — never dispatch
+  above threshold without approval.
+- Use idem_key "<ticket_id>:<step>" everywhere so retries are safe.
+Finish with a one-line summary of the outcome."""
+```
+
+Notice what the policy spends its words on. Not persuasion, not persona —
+*limits*. When to stop, when to ask, when to refuse. An agent that dispatches
+real-world actions needs its boundaries written down where the model can see
+them on every turn.
+
+## Probabilistic reasoning, deterministic mechanics
+
+One design rule shaped everything else: **the LLM never mutates ticket state
+directly.** Every side effect — dispatching a vendor, messaging a tenant,
+creating an approval gate — goes through tools keyed by an idempotency key.
+Retry the workflow after a crash and a replayed tool call returns the recorded
+outcome instead of double-texting a tenant at midnight.
+
+The model proposes; the tool layer disposes. That split is what makes the rest
+of this series possible: the durable approval-gate pattern and the eval gate
+both assume side effects are keyed and replayable.
+
+## Run it yourself
+
+The repo is MIT-licensed and runs locally without credentials or API keys:
+
+```bash
+uv venv --python 3.13 .venv && uv pip install -e ".[dev]"
+.venv/bin/python -m pytest tests/     # reliability core: 9 tests
+.venv/bin/python -m handoff.demo      # intake → triage → quotes → dispatch/gate
+```
+
+Posts 2 and 3 cover the parts we're proudest of: how the approval gate survives
+restarts, and how triage judgment gets tested like code.
