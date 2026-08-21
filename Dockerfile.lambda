@@ -1,0 +1,20 @@
+FROM public.ecr.aws/docker/library/python:3.13-slim
+
+# Lambda Web Adapter runs as a managed extension: Function URL -> localhost:8000
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.8.4 /lambda-adapter /opt/extensions/lambda-adapter
+
+WORKDIR /app
+COPY pyproject.toml README.md LICENSE ./
+COPY src ./src
+RUN pip install --no-cache-dir .[aws]
+
+ENV HANDOFF_MODEL_PROVIDER=bedrock \
+    HANDOFF_STORE=dynamodb \
+    HANDOFF_DDB_TABLE=handoff \
+    HANDOFF_DATA_DIR=/tmp/handoff-data \
+    AWS_REGION=us-east-2 \
+    PORT=8000 \
+    AWS_LWA_INVOKE_MODE=response_stream
+
+EXPOSE 8000
+CMD ["uvicorn", "handoff.web.app:app", "--host", "0.0.0.0", "--port", "8000"]
