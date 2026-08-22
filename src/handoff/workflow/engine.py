@@ -256,6 +256,12 @@ def nightly_sweep(tools: HandoffTools) -> list[str]:
             actions.append(f"nudged vendor on {t.id}")
             if t.stall_count >= 3:
                 actions.append(tools.escalate_to_human(t.id, "vendor unresponsive after 3 nudges"))
+        elif t.status == TicketStatus.TRIAGED:
+            age_hours = (utcnow() - t.updated_at).total_seconds() / 3600
+            if age_hours >= 2:
+                actions.append(
+                    tools.escalate_to_human(t.id, f"triaged but never dispatched ({age_hours:.0f}h)")
+                )
         elif t.status == TicketStatus.AWAITING_APPROVAL:
             age_hours = (utcnow() - t.updated_at).total_seconds() / 3600
             if age_hours >= 12:
