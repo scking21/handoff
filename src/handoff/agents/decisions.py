@@ -9,6 +9,7 @@ industry emergency definitions (active water, gas, spark, lockout = emergency).
 from __future__ import annotations
 
 import json
+import re
 from typing import Protocol
 
 from handoff.domain.models import Trade, Urgency
@@ -103,14 +104,32 @@ class SafetyEnsembleProvider:
         "burning smell", "smoke", "gas smell", "smell gas", "carbon monoxide",
         "sparked", "sparking", "pouring", "flooding", "sewage",
     ]
+    # Narrow guard for detector-device chatter: "smoke" inside the noun phrase
+    # "smoke detector" with an explicit MALFUNCTION cue and NO activation cue
+    # is battery/trouble talk, not a fire — let the LLM judgment stand.
+    # CO detectors are deliberately NOT guarded (odorless/invisible hazard;
+    # any CO-detector signal still escalates unconditionally).
+    _SMOKE_DETECTOR_RE = re.compile(r"smoke detectors?", re.IGNORECASE)
+    _DETECTOR_TROUBLE_RE = re.compile(r"chirp|beep|low battery|new battery|battery\b|malfunction|false alarm")
+    _DETECTOR_ACTIVATION_RE = re.compile(
+        r"went off|going off|won't stop|blaring|sounding|smell\w* smoke|see smoke|"
+        r"smoke everywhere|visible smoke|smoke (coming|rising|drifting|pouring|billowing)|"
+        r"smoke (in|from|filling)\b|\bfire\b")
 
     def __init__(self, inner: TriageProvider):
         self.inner = inner
 
     def classify(self, raw_request: str, photo_descriptions: list[str]) -> TriageDecision:
-        d = self.inner.classify(raw_request, photo_descriptions)
         text = (raw_request + " " + " ".join(photo_descriptions)).lower()
-        hit = next((k for k in self.HAZARD_KEYWORDS if k in text), None)
+        chatter = self._smoke_detector_chatter(text)
+        # Mask the device noun phrase for BOTH the inner provider and the
+        # keyword scan below — otherwise the inner heuristic's own bare-"smoke"
+        # hint re-creates the false emergency the ensemble guard just removed.
+        # Real smoke evidence elsewhere in the text survives the mask.
+        inner_raw = self._SMOKE_DETECTOR_RE.sub("detector", raw_request) if chatter else raw_request
+        d = self.inner.classify(inner_raw, photo_descriptions)
+        scan_text = (inner_raw + " " + " ".join(photo_descriptions)).lower()
+        hit = next((k for k in self.HAZARD_KEYWORDS if k in scan_text), None)
         if hit and d.urgency != Urgency.EMERGENCY:
             return TriageDecision(
                 urgency=Urgency.EMERGENCY,
@@ -119,6 +138,16 @@ class SafetyEnsembleProvider:
                 rationale=f"{d.rationale} | escalated: safety keyword '{hit}'",
             )
         return d
+
+    def _smoke_detector_chatter(self, text: str) -> bool:
+        """True only for smoke-DETECTOR maintenance talk: the sole 'smoke'
+        evidence is the device noun phrase, a malfunction cue is present, and
+        no activation cue is. Anything ambiguous keeps full escalation."""
+        if not self._SMOKE_DETECTOR_RE.search(text):
+            return False
+        if self._DETECTOR_ACTIVATION_RE.search(text):
+            return False
+        return bool(self._DETECTOR_TROUBLE_RE.search(text))
 
 
 def get_triage_provider(provider_name: str) -> TriageProvider:

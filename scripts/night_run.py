@@ -26,11 +26,16 @@ def run(scenarios: list[dict], provider) -> dict:
     rows = []
     for scen in scenarios:
         d = provider.classify(scen["raw"], list(scen["photos"]))
-        u_ok = d.urgency == scen["expect_urgency"]
+        if "assert_not_urgency" in scen:
+            u_ok = d.urgency != scen["assert_not_urgency"]
+            want = f"!= {scen['assert_not_urgency'].value}"
+        else:
+            u_ok = d.urgency == scen["expect_urgency"]
+            want = scen["expect_urgency"].value
         c_ok = d.category == scen["expect_category"]
         rows.append({"key": scen["key"], "u_ok": u_ok, "c_ok": c_ok,
                      "got": f"{d.urgency.value}/{d.category.value}",
-                     "want": f"{scen['expect_urgency'].value}/{scen['expect_category'].value}",
+                     "want": f"{want}/{scen['expect_category'].value}",
                      "conf": d.confidence, "rationale": d.rationale[:120],
                      "why": scen["rationale"]})
     n = len(rows)

@@ -128,15 +128,23 @@ NIGHT_SCENARIOS: list[dict] = [
 
 # Flagged probe — deliberately contested. SYSTEM_PROMPT reserves "emergency"
 # for "smoke or carbon-monoxide detector ACTIVATION"; a low-battery chirp is a
-# trouble signal, not activation -> routine/general. But the ensemble's bare
-# "smoke" keyword substring-hits "smoke detector" in ANY context, forcing
-# escalation. Measures the keyword net's false-positive rate on detector talk.
+# trouble signal, not activation. Probe outcome (2026-08-21 night run): with
+# the keyword-net guard in place, Nova judges the chirp URGENT (conf ~0.65,
+# "needs attention") — accepted as correct per Corby; label updated from the
+# original ROUTINE hypothesis. The probe's permanent job is to pin that the
+# ensemble does NOT force EMERGENCY on detector-maintenance talk.
 CHIRP_PROBE: dict = {
     "key": "smoke_detector_chirp",
     "raw": "The smoke detector in the hallway keeps chirping every 30 seconds. "
            "Pretty sure it just needs a new battery, it's driving us crazy.",
     "photos": [],
-    "expect_urgency": Urgency.ROUTINE,
+    # Live reps show Nova genuinely wavers urgent(conf .65) <-> routine(.60-.70)
+    # here (sampling noise; eval path runs without temperature pinning - see
+    # notes), so the STABLE invariant is asserted instead of the exact label:
+    # the ensemble must NOT force EMERGENCY on detector-maintenance talk.
+    # Corby accepted 'urgent' as a reasonable judgment when it occurs.
+    "assert_not_urgency": Urgency.EMERGENCY,
+    "label_note": "wavers urgent<->routine live; must never be emergency",
     "expect_category": Trade.GENERAL,
-    "rationale": "chirp != activation per prompt wording; probes bare-'smoke' keyword",
+    "rationale": "chirp != activation; net must not escalate; exact label unstable by measurement",
 }
