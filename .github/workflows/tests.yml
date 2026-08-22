@@ -14,10 +14,10 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install
-        run: uv pip install --system -e ".[dev]"
-      - name: Lint
         run: |
-          pip install ruff
-          ruff check src tests scripts --output-format concise || true
+          uv venv .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
+      - name: Lint
+        run: .venv/bin/ruff check src tests scripts --output-format concise || true
       - name: Test
-        run: pytest tests/ -q
+        run: .venv/bin/python -m pytest tests/ -q
