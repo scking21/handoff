@@ -20,6 +20,18 @@
     {% endif %}
   </div>
 
+  {% if t.status.value == 'dispatched' %}
+  <div class="panel">
+    <h3>Act as vendor</h3>
+    <form class="inline" method="post" action="/tickets/{{ t.id }}/vendor" style="margin-bottom:8px">
+      <button class="good" name="action" value="accept">Accept job</button>
+    </form>
+    <form class="inline" method="post" action="/tickets/{{ t.id }}/vendor">
+      <button class="danger" name="action" value="decline">Decline (re-route)</button>
+    </form>
+  </div>
+  {% endif %}
+
   {% if t.status.value in ('scheduled','in_progress') %}
   <div class="panel">
     <h3>Act as vendor</h3>
