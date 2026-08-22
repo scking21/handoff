@@ -45,3 +45,12 @@ Loop: hypothesis → single change → eval against 22-case library → keep/dis
 - urgency **1.00**, category **1.00**, stable across 4+ consecutive live runs, p50 ≈ 0.6s
 - Deployed to both surfaces (AgentCore runtime + Lambda dashboard) and verified through the
   public URL with `scripts/live_regression.py` (ALL GREEN).
+
+## Model A/B (post-deployment, live us-east-2)
+
+| Model | Urgency | Category | p50 latency | Verdict |
+|-------|---------|----------|-------------|---------|
+| Nova Lite (`us.amazon.nova-lite-v1:0`) | 100%, 100% | 100% | ~0.62s | **PRIMARY** |
+| Nova Micro (`us.amazon.nova-micro-v1:0`) | 95.5%, 95.5% | 100% | ~0.49s | documented fallback |
+
+Safety classification is the core promise; 20% faster at −4.5pts urgency is the wrong trade.
