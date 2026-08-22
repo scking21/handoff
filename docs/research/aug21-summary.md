@@ -81,3 +81,21 @@ Findings:
 4. Unconstrained fitting reached 90.6% but silently violated three hand-authored
    business cases; constrained optimization kept contracts intact at 88.3%
    mean / 86.9% fresh-seed. Statistical fitting requires business constraints.
+
+## Confidence-floor calibration (Aug 22 morning)
+
+The 0.55 confidence floor was intuition. Calibration study: 3 live Bedrock
+captures × 22 scenarios (n=66), floors swept analytically per capture-merged
+classifications.
+
+| Floor | Escalation rate | Effective accuracy | Critical undertriage |
+|-------|-----------------|--------------------|----------------------|
+| 0.00–0.60 | 0% | 100% | 0 |
+| 0.70 | 18.2% | 100% | 0 |
+| 0.80 | 21.2% | 100% | 0 |
+| 0.90 | 43.9% | 100% | 0 |
+
+Verdict: keep **0.55**. On-distribution the model is perfectly calibrated —
+the floor is a free insurance policy. Raising it buys zero accuracy and
+costs up to 44% human burden. The floor's value is off-distribution
+protection, which this study confirms stays intact.
