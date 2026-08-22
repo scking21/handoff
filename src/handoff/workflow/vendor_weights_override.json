@@ -1,29 +1,29 @@
 {
   "emergency": {
-    "rating": 18.0,
-    "drive_minutes": 0.1,
-    "open_jobs": 1.5,
-    "no_show": 10.0,
-    "on_call_bonus": 18.0,
-    "emergency_oncall_mult": 1.25,
-    "hourly_rate": 0.03
+    "rating": 15.360000000000003,
+    "drive_minutes": 0.024,
+    "open_jobs": 1.2000000000000002,
+    "no_show": 7.5,
+    "on_call_bonus": 7.5,
+    "emergency_oncall_mult": 2.5,
+    "hourly_rate": 0.025000000000000005
   },
   "urgent": {
-    "rating": 3.375,
-    "drive_minutes": 0.08437499999999999,
+    "rating": 2.53125,
+    "drive_minutes": 0.042187499999999996,
     "open_jobs": 1.5625,
     "no_show": 14.0,
-    "on_call_bonus": 1.25,
+    "on_call_bonus": 1.5625,
     "emergency_oncall_mult": 3.0,
-    "hourly_rate": 0.015
+    "hourly_rate": 0.03
   },
   "routine": {
-    "rating": 15.0,
-    "drive_minutes": 0.075,
-    "open_jobs": 0.375,
-    "no_show": 2.5,
-    "on_call_bonus": 3.0,
-    "emergency_oncall_mult": 3.0,
-    "hourly_rate": 0.48
+    "rating": 14.0,
+    "drive_minutes": 0.0281,
+    "open_jobs": 0.0938,
+    "hourly_rate": 0.44,
+    "no_show": 2.2,
+    "on_call_bonus": 0.75,
+    "emergency_oncall_mult": 3.0
   }
 }

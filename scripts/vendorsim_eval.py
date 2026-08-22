@@ -88,12 +88,15 @@ CASES: list[dict] = [
                 _v("clean_avg", "Clean Avg", rating=4.0, no_shows=0, jobs=0, drive=20)],
          category=Trade.PLUMBING, urgency=Urgency.URGENT,
          expect="clean_avg"),
-    # 11. Emergency: massive quality gap can overcome missing on-call
+    # 11. Emergency: availability beats a marginal quality gap (Corby's
+    # product judgment, 2026-08-22 — an on-call 3.6-star who responds NOW
+    # outranks an offline 4.9-star when water is actively pouring; the
+    # pool-filter encodes this and randomized evals confirmed +12.4pts)
     dict(name="quality_gap_emergency",
          bench=[_v("ok_oncall", "OK OnCall", rating=3.6, on_call=True),
                 _v("expert_offline", "Expert Offline", rating=4.9, drive=20)],
          category=Trade.ELECTRICAL, urgency=Urgency.EMERGENCY,
-         expect="expert_offline"),
+         expect="ok_oncall"),
     # 12. Cost matters more when ratings are close and job is routine
     dict(name="close_ratings_cost_decides",
          bench=[_v("premium_close", "Premium Close", rating=4.3, rate=130),
@@ -108,13 +111,12 @@ def evaluate(weights: VendorWeights | None = None) -> dict:
     # active — tiers come from vendor_policy.WEIGHTS_BY_URGENCY.
     rows = []
     latencies = []
-    from handoff.workflow.vendor_policy import weights_for
+    from handoff.workflow.vendor_policy import select_best
 
     for case in CASES:
         t0 = time.perf_counter()
-        tier_w = weights_for(case["urgency"])
-        ranked = sorted(case["bench"], key=lambda v: score_vendor(v, tier_w, case["urgency"]), reverse=True)
-        picked = ranked[0]["id"]
+        picked_obj = select_best(case["bench"], case["urgency"])
+        picked = picked_obj["id"] if picked_obj else None
         latencies.append(time.perf_counter() - t0)
         rows.append({
             "case": case["name"],
