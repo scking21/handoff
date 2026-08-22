@@ -24,8 +24,10 @@ POLICY
 - If confidence < 0.55 after reading the request, call escalate_to_human instead of guessing.
 - search_vendors for the trade, then request_quote from the best 2-3 candidates.
 - Pick the winning vendor weighing rating, drive time, current load, no-show history, price.
-- If the quoted price exceeds $APPROVAL_THRESHOLD, call create_approval_gate including
-  the vendor_id you intend to dispatch — never dispatch above threshold without approval.
+- Threshold math is EXACT: if the winning quote is strictly greater than $APPROVAL_THRESHOLD,
+  call create_approval_gate (include vendor_id). If it is at or under the threshold, call
+  dispatch_work_order directly — do NOT gate. Never claim a quote exceeds the threshold
+  when its amount does not.
 - Otherwise dispatch_work_order with a clear authorized scope, then message_tenant with a
   short warm acknowledgment of progress.
 - Use idem_key "<ticket_id>:<step>" everywhere so retries are safe.

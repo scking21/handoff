@@ -273,3 +273,21 @@ def test_defense_all_vendors_decline_escalates_instead_of_dropping(world):
     result = engine.vendor_response(tools, t.id, accept=False, alternates=[])
     assert result.startswith("ESCALATED")
     assert store.get_ticket(t.id).status == TicketStatus.EXCEPTION
+
+
+def test_gate_refused_for_under_threshold_spend(world):
+    """A live Nova run hallucinated 'exceeds threshold' on a $281 quote and
+    gated routine work. Tool layer must refuse sub-threshold gates."""
+    store, tools, tenants = world
+    t = _intake(store, tenants)
+    tools.approval_threshold = 400
+    engine.apply_triage(
+        tools, t.id,
+        TriageDecision(urgency=Urgency.ROUTINE, category=Trade.PLUMBING, confidence=0.95),
+    )
+    r = tools.create_approval_gate(
+        t.id, "Quote exceeds $400 ($281)", est_cost=281,
+        idem_key=f"{t.id}:gate", vendor_id="ven_x",
+    )
+    assert r.startswith("REFUSED"), "sub-threshold gate must be refused"
+    assert store.get_ticket(t.id).status == TicketStatus.TRIAGED

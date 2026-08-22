@@ -182,7 +182,19 @@ class HandoffTools:
                     "REFUSED: create_approval_gate requires vendor_id — the PM approves a "
                     "specific dispatch; without it the gate cannot be resumed"
                 )
+            # Gate legitimacy enforced HERE, not trusted from the model's prose:
+            # sub-threshold spend auto-dispatches. A live Nova run hallucinated
+            # "quote exceeds threshold" on a $281 quote and gated it — this wall
+            # makes that class of unnecessary interruption impossible.
+            if est_cost <= self.approval_threshold and "after-hours" not in reason.lower():
+                return (
+                    f"REFUSED: ${est_cost} is within the ${self.approval_threshold} "
+                    f"auto-dispatch budget — call dispatch_work_order directly. Gates are "
+                    f"only for over-threshold spend or after-hours emergencies."
+                )
             replayed = self._check_idem(t, idem_key)
+            if replayed:
+                return replayed
             if replayed:
                 return replayed
             t.status = TicketStatus.AWAITING_APPROVAL
