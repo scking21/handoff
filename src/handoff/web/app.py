@@ -134,10 +134,21 @@ def board(request: Request):
         cols = [t for t in tickets if t.status == status]
         if cols or status in (TicketStatus.AWAITING_APPROVAL, TicketStatus.DISPATCHED, TicketStatus.EXCEPTION):
             columns.append({"status": status, "tickets": cols})
+    open_statuses = {TicketStatus.INTAKE, TicketStatus.TRIAGED, TicketStatus.AWAITING_APPROVAL,
+                     TicketStatus.DISPATCHED, TicketStatus.SCHEDULED, TicketStatus.IN_PROGRESS}
+    open_tickets = [t for t in tickets if t.status in open_statuses]
+    spend = sum(t.authorized_cost or 0 for t in tickets if t.status != TicketStatus.INTAKE)
+    stats = {
+        "open": len(open_tickets),
+        "spend": spend,
+        "escalations": sum(1 for t in tickets if t.status == TicketStatus.EXCEPTION),
+        "gates": sum(1 for t in tickets if t.status == TicketStatus.AWAITING_APPROVAL),
+    }
     return TEMPLATES.TemplateResponse(
         request,
         "board.html",
-        {"columns": columns, "scenarios": [s["key"] for s in SCENARIOS], "vendor_name": _vendor_name},
+        {"columns": columns, "scenarios": [s["key"] for s in SCENARIOS],
+         "vendor_name": _vendor_name, "stats": stats},
     )
 
 

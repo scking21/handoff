@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="row" style="margin-top:16px; justify-content: space-between">
+<div class="row" style="margin-top:16px">
+  <div class="pill">open {{ stats.open }}</div>
+  <div class="pill">authorized spend ${{ stats.spend }}</div>
+  <div class="pill">pending approvals {{ stats.gates }}</div>
+  <div class="pill">escalations {{ stats.escalations }}</div>
+</div>
+
+<div class="row" style="justify-content: space-between">
   <form class="inline" method="post" action="/tickets/new">
     <select name="scenario">
       {% for s in scenarios %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
