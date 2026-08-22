@@ -74,7 +74,7 @@ def test_hole_dispatch_tool_must_enforce_threshold(world):
 def test_hole_closeout_requires_dispatched_ticket(world):
     store, tools, tenants = world
     t = _intake(store, tenants)
-    result = engine.complete_and_verify(tools, t.id, "forged closeout", [], 0)
+    engine.complete_and_verify(tools, t.id, "forged closeout", [], 0)
     final = store.get_ticket(t.id)
     assert final.status not in (TicketStatus.COMPLETED, TicketStatus.CLOSED), (
         f"closeout transitioned {TicketStatus.INTAKE.value} -> {final.status.value}"

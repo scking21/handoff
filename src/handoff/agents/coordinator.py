@@ -34,9 +34,8 @@ Finish with a one-line summary of the outcome."""
 
 class CoordinatorAgent:
     def __init__(self, tools: HandoffTools, model=None, trace_hook=None):
-        from strands import Agent
+        from strands import Agent, ModelRetryStrategy
         from strands.agent.conversation_manager import SlidingWindowConversationManager
-        from strands import ModelRetryStrategy
 
         self.tools = tools
         hooks = [trace_hook] if trace_hook is not None else None

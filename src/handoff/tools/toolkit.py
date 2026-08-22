@@ -196,7 +196,6 @@ class HandoffTools:
         if not isinstance(out, str):
             return f"ERROR: no ticket {ticket_id}"
         if out.startswith("APPROVAL_GATE_CREATED"):
-            t = self.store.get_ticket(ticket_id)
             self.store.record_message(OutboundMessage(
                 ticket_id=ticket_id, to_role=Actor.PM, to_id="pm", channel="push",
                 kind="approval_request",

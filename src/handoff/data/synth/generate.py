@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from faker import Faker
 
-from handoff.domain.models import Actor, Property, Tenant, Trade, Urgency, Vendor
+from handoff.domain.models import Property, Tenant, Trade, Urgency, Vendor
 from handoff.store.base import Store
 
 fake = Faker()

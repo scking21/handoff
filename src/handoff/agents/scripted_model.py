@@ -15,10 +15,11 @@ import uuid
 from collections.abc import AsyncIterable
 from typing import Any
 
-from handoff.agents.decisions import HeuristicTriageProvider
 from strands.event_loop.streaming import process_stream
 from strands.models.model import Model
 from strands.types.tools import ToolSpec
+
+from handoff.agents.decisions import HeuristicTriageProvider
 
 
 def _chunks_for_text(text: str) -> list[dict[str, Any]]:

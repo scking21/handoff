@@ -13,7 +13,7 @@ import threading
 from pathlib import Path
 from typing import Protocol
 
-from handoff.domain.models import Actor, OutboundMessage, Property, Tenant, Vendor, WorkOrder
+from handoff.domain.models import OutboundMessage, Property, Tenant, Vendor, WorkOrder
 
 
 class Store(Protocol):

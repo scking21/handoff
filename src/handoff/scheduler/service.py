@@ -14,9 +14,8 @@ from __future__ import annotations
 
 import threading
 import time
-from collections.abc import Callable
 
-from handoff.domain.models import TicketStatus, Urgency
+from handoff.domain.models import TicketStatus
 from handoff.tools.toolkit import HandoffTools, sla_deadline
 from handoff.workflow.engine import nightly_sweep
 

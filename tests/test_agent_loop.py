@@ -13,9 +13,9 @@ from handoff.agents.coordinator import CoordinatorAgent
 from handoff.agents.scripted_model import ScriptedModelProvider
 from handoff.data.synth.generate import make_request, seed_world
 from handoff.domain.models import TicketStatus, Urgency
-from handoff.workflow import engine
 from handoff.store.base import FileStore
 from handoff.tools.toolkit import HandoffTools
+from handoff.workflow import engine
 
 
 @pytest.fixture()
@@ -49,7 +49,7 @@ def test_coordinator_full_loop_dispatches_under_threshold(world):
     offers = [m for m in store.list_messages(t.id) if m.kind == "dispatch_offer"]
     assert len(offers) == 1
     # Strands hooks traced every tool call
-    lines = [json.loads(l) for l in (tmp_path / "trace.jsonl").read_text().splitlines()]
+    lines = [json.loads(line) for line in (tmp_path / "trace.jsonl").read_text().splitlines()]
     tools_traced = {r["tool"] for r in lines}
     assert {"lookup_ticket_context", "search_vendors", "request_quote", "dispatch_work_order"} <= tools_traced
 

@@ -9,7 +9,7 @@ backend drops in later with zero interface change.
 from __future__ import annotations
 
 import os
-from typing import Callable, Protocol, runtime_checkable
+from collections.abc import Callable
 
 from handoff.channels.sms import ConsoleSmsChannel, FileSmsChannel, SmsChannel
 

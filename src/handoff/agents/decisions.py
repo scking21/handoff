@@ -159,10 +159,10 @@ class SafetyEnsembleProvider:
 
 def get_triage_provider(provider_name: str) -> TriageProvider:
     if provider_name == "bedrock":
-        from handoff.config import settings
         from strands.models import BedrockModel
 
-        from strands.models import BedrockModel
+        from handoff.config import settings
+
 
         model = BedrockModel(model_id=settings.bedrock_model_id, region_name=settings.aws_region)
         return SafetyEnsembleProvider(LLMTriageProvider(model=model))
@@ -171,8 +171,9 @@ def get_triage_provider(provider_name: str) -> TriageProvider:
 
 def build_bedrock_model():
     """Single source of truth for the deployed triage model config."""
-    from handoff.config import settings
     from strands.models import BedrockModel
+
+    from handoff.config import settings
 
     return BedrockModel(
         model_id=settings.bedrock_model_id,

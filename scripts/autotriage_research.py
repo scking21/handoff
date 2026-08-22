@@ -16,7 +16,6 @@ import argparse
 import json
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -158,9 +157,10 @@ def main() -> None:
         keep = s > base_score or (s == base_score and len(json.dumps(mutation)) < len(json.dumps(prompt)))
         commit = ""
         if keep:
-            c = subprocess.run(["git", "add", "-A"], cwd=ROOT)
-            c = subprocess.run(["git", "commit", "-q", "-m", f"autoresearch iter{i}: score {s:.2f}"],
-                               cwd=ROOT, capture_output=True, text=True)
+            subprocess.run(["git", "add", "-A"], cwd=ROOT, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", f"autoresearch iter{i}: score {s:.2f}"],
+                cwd=ROOT, capture_output=True, text=True, check=True)
             commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
                                     capture_output=True, text=True).stdout.strip()
             base_score = s

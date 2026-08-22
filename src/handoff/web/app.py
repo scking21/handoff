@@ -10,9 +10,8 @@ from __future__ import annotations
 
 import threading
 import time
-from pathlib import Path
-
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -238,5 +237,5 @@ def tenant_verify(ticket_id: str, ok: bool = Form(True)):
 
 @app.post("/sweep")
 def sweep():
-    actions = state.scheduler.tick_once()
+    state.scheduler.tick_once()
     return RedirectResponse("/", status_code=303)

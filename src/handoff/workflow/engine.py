@@ -10,12 +10,11 @@ probabilistic reasoning".
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import timedelta
 
 from pydantic import BaseModel
 
 from handoff.domain.models import Actor, TicketStatus, Trade, Urgency, WorkOrder
-from datetime import timedelta
-
 from handoff.tools.toolkit import HandoffTools, utcnow
 
 

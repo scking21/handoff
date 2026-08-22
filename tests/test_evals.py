@@ -22,7 +22,7 @@ def test_heuristic_triage_meets_floor():
 def test_emergency_scenarios_never_undertriaged():
     """The catastrophic failure mode is calling an emergency routine."""
     report = evaluate(HeuristicTriageProvider())
-    for row, scen in zip(report["rows"], SCENARIOS):
+    for row, scen in zip(report["rows"], SCENARIOS, strict=True):
         if scen["expect_urgency"].value == "emergency" and scen["key"] in (
             "midnight_flood", "gas_smell", "broken_outlet", "locked_out",
         ):

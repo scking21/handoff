@@ -10,7 +10,6 @@ runtime directly. Exits non-zero on any failure; prints a latency summary.
 from __future__ import annotations
 
 import argparse
-import json
 import statistics
 import time
 import urllib.error
@@ -52,7 +51,7 @@ def check_public(base: str) -> bool:
     print(f"[{'ok' if status == 200 else 'FAIL'}] board GET {status}")
     ok &= status == 200
 
-    for scenario, expected in SCENARIOS:
+    for scenario, _expected in SCENARIOS:
         t0 = time.time()
         status, _ = http(base + "/tickets/new", {"scenario": scenario, "after_hours": "true"})
         dt = time.time() - t0
