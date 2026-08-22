@@ -104,12 +104,16 @@ CASES: list[dict] = [
 
 
 def evaluate(weights: VendorWeights | None = None) -> dict:
-    w = weights or DEFAULTS
+    # NOTE: authored-case mode ignores `weights` overrides when tiers are
+    # active — tiers come from vendor_policy.WEIGHTS_BY_URGENCY.
     rows = []
     latencies = []
+    from handoff.workflow.vendor_policy import weights_for
+
     for case in CASES:
         t0 = time.perf_counter()
-        ranked = sorted(case["bench"], key=lambda v: score_vendor(v, w, case["urgency"]), reverse=True)
+        tier_w = weights_for(case["urgency"])
+        ranked = sorted(case["bench"], key=lambda v: score_vendor(v, tier_w, case["urgency"]), reverse=True)
         picked = ranked[0]["id"]
         latencies.append(time.perf_counter() - t0)
         rows.append({
@@ -120,7 +124,7 @@ def evaluate(weights: VendorWeights | None = None) -> dict:
         })
     n = len(rows)
     return {
-        "provider": f"VendorWeights(rating={w.rating}, drive={w.drive_minutes}, load={w.open_jobs}, noshow={w.no_show})",
+        "provider": "VendorWeights(tiered)",
         "n": n,
         "urgency_accuracy": sum(r["ok"] for r in rows) / n,   # policy fidelity
         "category_accuracy": 1.0,                              # placeholder parity with triage schema

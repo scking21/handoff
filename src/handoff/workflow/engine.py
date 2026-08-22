@@ -79,18 +79,18 @@ def apply_triage(tools: HandoffTools, ticket_id: str, decision: TriageDecision) 
 
 
 def select_vendor(candidates: list[dict], category: Trade, urgency: Urgency) -> VendorChoice | None:
-    """Score vendors: skill fit, reliability, proximity, load, cost. Deterministic."""
+    """Score vendors via the per-urgency tiered policy in vendor_policy.
+    Skill fit is guaranteed by the caller's trade filter; this ranks
+    reliability, proximity, load and cost within it."""
+    from handoff.workflow.vendor_policy import score_vendor, weights_for
+
     if not candidates:
         return None
 
+    w = weights_for(urgency)
+
     def score(v: dict) -> float:
-        s = v["rating"] * 12.0
-        s -= v["drive_minutes"] * 0.15
-        s -= v["open_jobs"] * 3.0
-        s -= v["no_show_count"] * 5.0
-        s += (2.0 if v.get("on_call_now") else 0.0) * (3.0 if urgency == Urgency.EMERGENCY else 1.0)
-        s -= v["hourly_rate"] * 0.05
-        return s
+        return score_vendor(v, w, urgency)
 
     ranked = sorted(candidates, key=score, reverse=True)
     best = ranked[0]
