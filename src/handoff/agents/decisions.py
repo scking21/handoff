@@ -104,13 +104,15 @@ class SafetyEnsembleProvider:
         "burning smell", "smoke", "gas smell", "smell gas", "carbon monoxide",
         "sparked", "sparking", "pouring", "flooding", "sewage",
     ]
-    # Narrow guard for detector-device chatter: "smoke" inside the noun phrase
-    # "smoke detector" with an explicit MALFUNCTION cue and NO activation cue
-    # is battery/trouble talk, not a fire — let the LLM judgment stand.
+    # Narrow guard for detector-device phrases: when the device noun phrase is
+    # present, the "smoke" keyword is device talk, not fire evidence — REGARDLESS
+    # of whether a malfunction keyword appears (wave-3 finding: synonyms like
+    # "making noise"/"blinking red" slipped past a malfunction-word requirement,
+    # re-exposing the seam). Real fire always carries an activation cue
+    # (went off / blaring / smell/see smoke / fire), which still escalates.
     # CO detectors are deliberately NOT guarded (odorless/invisible hazard;
-    # any CO-detector signal still escalates unconditionally).
+    # any CO-detector phrase still escalates unconditionally).
     _SMOKE_DETECTOR_RE = re.compile(r"smoke detectors?", re.IGNORECASE)
-    _DETECTOR_TROUBLE_RE = re.compile(r"chirp|beep|low battery|new battery|battery\b|malfunction|false alarm")
     _DETECTOR_ACTIVATION_RE = re.compile(
         r"went off|going off|won't stop|blaring|sounding|smell\w* smoke|see smoke|"
         r"smoke everywhere|visible smoke|smoke (coming|rising|drifting|pouring|billowing)|"
@@ -123,18 +125,23 @@ class SafetyEnsembleProvider:
         text = (raw_request + " " + " ".join(photo_descriptions)).lower()
         chatter = self._smoke_detector_chatter(text)
         # The mask exists to stop DETERMINISTIC keyword scanners from seeing
-        # "smoke" inside the device noun phrase. The net scan below always
-        # uses it. The inner provider gets it ONLY when it is itself a
-        # keyword scanner (HeuristicTriageProvider has bare "smoke" in its
-        # hints); an LLM inner keeps FULL context — masking "smoke detector"
-        # to bare "detector" makes the device type ambiguous (could read as
-        # CO) and degrades its judgment.
-        if chatter and isinstance(self.inner, HeuristicTriageProvider):
-            d = self.inner.classify(self._SMOKE_DETECTOR_RE.sub("detector", raw_request), photo_descriptions)
-            scan_text = (self._SMOKE_DETECTOR_RE.sub("detector", text))
+        # "smoke" inside the device noun phrase. It must cover the PHOTO text
+        # too: a device named only in a photo description is still device
+        # maintenance talk, not fire evidence. (Wave-3 finding: pre-fix, a
+        # photo-only mention force-escalated emergency through the heuristic
+        # inner's bare-"smoke" hint.)
+        mask = lambda t: self._SMOKE_DETECTOR_RE.sub("detector", t) if chatter else t
+        # The inner provider gets the mask ONLY when it is itself a keyword
+        # scanner (HeuristicTriageProvider has bare "smoke" in its hints). An
+        # LLM inner keeps FULL context — masking "smoke detector" to bare
+        # "detector" makes the device type ambiguous (could read as CO) and
+        # degrades its judgment.
+        if isinstance(self.inner, HeuristicTriageProvider):
+            d = self.inner.classify(mask(raw_request), [mask(p) for p in photo_descriptions])
+            scan_text = mask(text)
         else:
             d = self.inner.classify(raw_request, photo_descriptions)
-            scan_text = self._SMOKE_DETECTOR_RE.sub("detector", text) if chatter else text
+            scan_text = mask(text)
         hit = next((k for k in self.HAZARD_KEYWORDS if k in scan_text), None)
         if hit and d.urgency != Urgency.EMERGENCY:
             return TriageDecision(
@@ -146,14 +153,17 @@ class SafetyEnsembleProvider:
         return d
 
     def _smoke_detector_chatter(self, text: str) -> bool:
-        """True only for smoke-DETECTOR maintenance talk: the sole 'smoke'
-        evidence is the device noun phrase, a malfunction cue is present, and
-        no activation cue is. Anything ambiguous keeps full escalation."""
+        """True when the ONLY 'smoke' evidence is the device noun phrase and no
+        activation cue is present. Dropping the malfunction-word requirement
+        (wave-3): synonyms like 'making noise'/'blinking red' describe the
+        device without a canonical trouble keyword; a device simply named with
+        no activation signal is maintenance talk, not fire. Anything ambiguous
+        (any activation/real-smoke cue) keeps full escalation."""
         if not self._SMOKE_DETECTOR_RE.search(text):
             return False
         if self._DETECTOR_ACTIVATION_RE.search(text):
             return False
-        return bool(self._DETECTOR_TROUBLE_RE.search(text))
+        return True
 
 
 def get_triage_provider(provider_name: str) -> TriageProvider:
