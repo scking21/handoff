@@ -128,14 +128,57 @@ class LLMTriageProvider:
         return result
 
 
+class SafetyEnsembleProvider:
+    """LLM judgment + deterministic hazard-keyword escalation.
+
+    The model handles nuance; a fixed keyword net guarantees that reports
+    matching catastrophic-hazard patterns are never undertriaged, regardless
+    of sampling noise. Defense in depth at the decision layer."""
+
+    HAZARD_KEYWORDS = [
+        "burning smell", "smoke", "gas smell", "smell gas", "carbon monoxide",
+        "sparked", "sparking", "pouring", "flooding", "sewage",
+    ]
+
+    def __init__(self, inner: TriageProvider):
+        self.inner = inner
+
+    def classify(self, raw_request: str, photo_descriptions: list[str]) -> TriageDecision:
+        d = self.inner.classify(raw_request, photo_descriptions)
+        text = (raw_request + " " + " ".join(photo_descriptions)).lower()
+        hit = next((k for k in self.HAZARD_KEYWORDS if k in text), None)
+        if hit and d.urgency != Urgency.EMERGENCY:
+            return TriageDecision(
+                urgency=Urgency.EMERGENCY,
+                category=d.category,
+                confidence=max(d.confidence, 0.9),
+                rationale=f"{d.rationale} | escalated: safety keyword '{hit}'",
+            )
+        return d
+
+
 def get_triage_provider(provider_name: str) -> TriageProvider:
     if provider_name == "bedrock":
         from handoff.config import settings
         from strands.models import BedrockModel
 
+        from strands.models import BedrockModel
+
         model = BedrockModel(model_id=settings.bedrock_model_id, region_name=settings.aws_region)
-        return LLMTriageProvider(model=model)
+        return SafetyEnsembleProvider(LLMTriageProvider(model=model))
     return HeuristicTriageProvider()
+
+
+def build_bedrock_model():
+    """Single source of truth for the deployed triage model config."""
+    from handoff.config import settings
+    from strands.models import BedrockModel
+
+    return BedrockModel(
+        model_id=settings.bedrock_model_id,
+        region_name=settings.aws_region,
+        temperature=settings.bedrock_temperature,
+    )
 
 
 def decision_to_json(d: TriageDecision) -> str:

@@ -65,11 +65,9 @@ class _LazyState:
                     from handoff.agents.coordinator import CoordinatorAgent
 
                     if provider == "bedrock":
-                        from strands.models import BedrockModel
+                        from handoff.agents.decisions import build_bedrock_model
 
-                        model = BedrockModel(
-                            model_id=settings.bedrock_model_id, region_name=settings.aws_region
-                        )
+                        model = build_bedrock_model()
                     else:
                         from handoff.agents.scripted_model import ScriptedModelProvider
 

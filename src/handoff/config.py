@@ -16,6 +16,9 @@ class Settings:
     bedrock_model_id: str = field(
         default_factory=lambda: os.getenv("HANDOFF_BEDROCK_MODEL_ID", "us.amazon.nova-lite-v1:0")
     )
+    # Triage is classification: deterministic decoding is both faster and
+    # reproducible. Creativity has no value here.
+    bedrock_temperature: float = field(default_factory=lambda: float(os.getenv("HANDOFF_BEDROCK_TEMPERATURE", "0")))
     approval_threshold: int = field(default_factory=lambda: int(os.getenv("HANDOFF_APPROVAL_THRESHOLD", "400")))
     data_dir: str = field(default_factory=lambda: os.getenv("HANDOFF_DATA_DIR", "data/runtime"))
     store_backend: str = field(default_factory=lambda: os.getenv("HANDOFF_STORE", "file"))  # file|dynamodb
