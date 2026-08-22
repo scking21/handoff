@@ -37,9 +37,9 @@ STATUS_ORDER = [
 ]
 
 
-MAX_OPEN_TICKETS = 120  # public demo: cap paid inference surface
-RATE_LIMIT = 6          # submissions per IP per window
-WINDOW_SECONDS = 300.0
+MAX_OPEN_TICKETS = int(__import__("os").getenv("HANDOFF_MAX_OPEN_TICKETS", "120"))
+RATE_LIMIT = int(__import__("os").getenv("HANDOFF_RATE_LIMIT", "12"))
+WINDOW_SECONDS = float(__import__("os").getenv("HANDOFF_RATE_WINDOW_SECONDS", "300"))
 
 
 class RateLimiter:
