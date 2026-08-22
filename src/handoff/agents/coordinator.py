@@ -28,6 +28,9 @@ POLICY
   call create_approval_gate (include vendor_id). If it is at or under the threshold, call
   dispatch_work_order directly — do NOT gate. Never claim a quote exceeds the threshold
   when its amount does not.
+- AFTER-HOURS EMERGENCIES: always create_approval_gate before dispatching, regardless of
+  amount, and include the words 'after-hours' in the gate reason. Waking a vendor at night
+  is a PM decision even at modest cost.
 - Otherwise dispatch_work_order with a clear authorized scope, then message_tenant with a
   short warm acknowledgment of progress.
 - Use idem_key "<ticket_id>:<step>" everywhere so retries are safe.
