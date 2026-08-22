@@ -47,13 +47,21 @@ def run_request(
     return store.get_ticket(t.id)
 
 
-def run_request_with_coordinator(store: Store, coordinator, payload: dict) -> WorkOrder:
+def run_request_with_coordinator(store: Store, coordinator, payload: dict,
+                                 after_hours: bool = False) -> WorkOrder:
     """Agent-driven path: a Strands Agent with tool access owns the ticket loop.
     Intake + tenant ack stay deterministic (guaranteed within 60s benchmark);
     the agent does triage through dispatch."""
+    payload = dict(payload, after_hours=after_hours)
     t = engine.intake_request(store, coordinator.tools, payload)
     coordinator.handle_request(
-        {"ticket_id": t.id, "unit": t.unit, "raw": t.raw_request, "photos": t.photo_descriptions}
+        {
+            "ticket_id": t.id,
+            "unit": t.unit,
+            "raw": t.raw_request,
+            "photos": t.photo_descriptions,
+            "after_hours": bool(t.after_hours),
+        }
     )
     return store.get_ticket(t.id)
 
@@ -67,6 +75,7 @@ def _intake_only(store: Store, payload: dict) -> WorkOrder:
         tenant_id=payload["tenant_id"],
         raw_request=payload["raw"],
         photo_descriptions=payload.get("photos", []),
+        after_hours=bool(payload.get("after_hours", False)),
     )
     store.put_ticket(t)
     t.record(Actor.TENANT, "request_received", payload["raw"][:80])

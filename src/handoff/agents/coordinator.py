@@ -62,6 +62,7 @@ class CoordinatorAgent:
             f"New maintenance request.\n"
             f"ticket_id: {payload['ticket_id']}\n"
             f"unit: {payload['unit']}\n"
+            f"AFTER-HOURS: {'YES — after-hours emergency gating policy applies' if payload.get('after_hours') else 'no (business hours)'}\n"
             f"tenant report: {payload['raw']}\n"
         )
         if payload.get("photos"):

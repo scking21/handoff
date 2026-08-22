@@ -185,7 +185,8 @@ def new_ticket(request: Request, scenario: str = Form(...), after_hours: bool = 
         return HTMLResponse("Demo at capacity — please enjoy the existing tickets.", status_code=503)
     payload = make_request(state.store, scenario)
     if state.coordinator is not None:
-        run_request_with_coordinator(state.store, state.coordinator, payload)
+        run_request_with_coordinator(state.store, state.coordinator, payload,
+                                     after_hours=after_hours)
     else:
         run_request(state.store, state.tools, state.triage, payload, after_hours=after_hours)
     return RedirectResponse("/", status_code=303)

@@ -118,7 +118,8 @@ def invoke(event: dict) -> dict:
 
         payload = make_request(st.store, event.get("scenario"))
         t = (
-            run_request_with_coordinator(st.store, st.coordinator, payload)
+            run_request_with_coordinator(st.store, st.coordinator, payload,
+                                         after_hours=bool(event.get("after_hours")))
             if st.coordinator is not None
             else run_request(st.store, st.tools, st.triage, payload,
                              after_hours=bool(event.get("after_hours")))

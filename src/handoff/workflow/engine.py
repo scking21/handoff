@@ -47,6 +47,7 @@ def intake_request(store, tools: HandoffTools, payload: dict) -> WorkOrder:
         tenant_id=payload["tenant_id"],
         raw_request=payload["raw"],
         photo_descriptions=payload.get("photos", []),
+        after_hours=bool(payload.get("after_hours", False)),
     )
     store.put_ticket(t)
     t.record(Actor.TENANT, "request_received", payload["raw"][:80])

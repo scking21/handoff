@@ -143,6 +143,7 @@ class WorkOrder(BaseModel):
     invoice_amount: int | None = None
     invoice_discrepancy: str = ""
 
+    after_hours: bool = False  # reported outside business hours (affects gate policy)
     approval: ApprovalDecision | None = None
     idempotency_keys: set[str] = Field(default_factory=set)
     stall_count: int = 0
