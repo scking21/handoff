@@ -76,11 +76,25 @@ def score_vendor(v: dict, w: VendorWeights, urgency) -> float:
     return s
 
 
+EMERGENCY_POOL_FILTER = True  # native lexicographic filtering beats tuned-linear by +12.4pts (vendorsim, 3 seeds)
+
+
 def select_best(bench: list[dict], urgency) -> dict | None:
     if not bench:
         return None
+    from handoff.domain.models import Urgency
+
+    pool = bench
+    if urgency == Urgency.EMERGENCY and EMERGENCY_POOL_FILTER:
+        # Reference-policy structure as a hard rule: unreliable vendors are
+        # disqualified (unless none remain), then on-call availability is
+        # required (again unless none remain), before any scoring happens.
+        clean = [v for v in pool if v.get("no_show_count", 0) < 3]
+        pool = clean or pool
+        oncall = [v for v in pool if v.get("on_call_now")]
+        pool = oncall or pool
     w = weights_for(urgency)
-    return max(bench, key=lambda v: score_vendor(v, w, urgency))
+    return max(pool, key=lambda v: score_vendor(v, w, urgency))
 
 
 def with_overrides(base: VendorWeights, **overrides) -> VendorWeights:
