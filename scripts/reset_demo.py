@@ -36,7 +36,7 @@ def main() -> None:
         keys = [
             {"pk": it["pk"], "sk": it["sk"]}
             for it in page.get("Items", [])
-            if it["pk"] in ("ticket", "message")
+            if it["pk"].get("S") in ("ticket", "message")
         ]
         for i in range(0, len(keys), 25):  # batch_write_item caps at 25
             chunk = [{"DeleteRequest": {"Key": k}} for k in keys[i:i + 25]]
