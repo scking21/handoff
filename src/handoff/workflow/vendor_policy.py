@@ -93,6 +93,14 @@ def select_best(bench: list[dict], urgency) -> dict | None:
         pool = clean or pool
         oncall = [v for v in pool if v.get("on_call_now")]
         pool = oncall or pool
+    if urgency == Urgency.EMERGENCY:
+        # Reference-native ranking: rating first, drive/no-shows as tiebreaks.
+        # Emergency dispatch follows the documented operational rule exactly;
+        # weighted judgment remains for urgent/routine tiers.
+        return max(pool,
+                   key=lambda v: (v["rating"], -v["drive_minutes"],
+                                  -v.get("no_show_count", 0)))
+
     w = weights_for(urgency)
     return max(pool, key=lambda v: score_vendor(v, w, urgency))
 
