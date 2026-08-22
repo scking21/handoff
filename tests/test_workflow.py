@@ -50,7 +50,7 @@ def test_happy_path_end_to_end(world):
         # tenant got ack + assignment update + closeout check, in order;
         # vendor got exactly one dispatch offer between them
         kinds = [m.kind for m in store.list_messages(t.id)]
-        assert kinds == ["ack", "dispatch_offer", "update", "closeout_check"]
+        assert kinds == ["ack", "dispatch_offer", "update", "schedule_offer", "closeout_check"]
 
 
 def test_idempotent_dispatch_never_double_sends(world):
@@ -155,3 +155,42 @@ def test_nightly_sweep_nudges_and_escalates(world):
         actions += engine.nightly_sweep(tools)
     assert any("nudged vendor" in a for a in actions)
     assert any("unresponsive" in a for a in actions)
+
+
+def test_tenant_reject_reopens_with_context(world):
+    """'Not fixed' must reopen the ticket as a high-confidence human queue item,
+    never silently close."""
+    store, tools, tenants = world
+    payload = make_request(store, "dripping_faucet", tenant=tenants[0])
+    t = engine.intake_request(store, tools, payload)
+    engine.apply_triage(tools, t.id, _triage("dripping_faucet"))
+    vendors = [v.model_dump() for v in store.list_vendors("plumbing")]
+    choice = engine.select_vendor(vendors, Trade.PLUMBING, Urgency.ROUTINE)
+    tools.approval_threshold = 10_000
+    engine.gate_and_dispatch(tools, t.id, choice)
+    engine.vendor_response(tools, t.id, accept=True)
+    engine.complete_and_verify(tools, t.id, "done", [], choice.estimated_cost)
+
+    res = engine.tenant_rejects_fix(tools, t.id, note="still dripping")
+    assert res.startswith("ESCALATED")
+    final = store.get_ticket(t.id)
+    assert final.status == TicketStatus.EXCEPTION
+    assert any("persists" in e.detail for e in final.timeline if e.kind == "escalated")
+
+
+def test_accept_sends_confirmed_window_to_tenant(world):
+    store, tools, tenants = world
+    payload = make_request(store, "dripping_faucet", tenant=tenants[0])
+    t = engine.intake_request(store, tools, payload)
+    engine.apply_triage(tools, t.id, _triage("dripping_faucet"))
+    vendors = [v.model_dump() for v in store.list_vendors("plumbing")]
+    choice = engine.select_vendor(vendors, Trade.PLUMBING, Urgency.ROUTINE)
+    tools.approval_threshold = 10_000
+    engine.gate_and_dispatch(tools, t.id, choice)
+
+    engine.vendor_response(tools, t.id, accept=True)
+    t = store.get_ticket(t.id)
+    assert t.status == TicketStatus.SCHEDULED
+    assert t.scheduled_window, "acceptance must lock a window"
+    msgs = [m for m in store.list_messages(t.id) if m.kind == "schedule_offer"]
+    assert len(msgs) == 1 and t.scheduled_window in msgs[0].body

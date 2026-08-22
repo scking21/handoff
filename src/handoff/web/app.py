@@ -214,11 +214,14 @@ def vendor_action(
 
 @app.post("/tickets/{ticket_id}/verify")
 def tenant_verify(ticket_id: str, ok: bool = Form(True)):
-    t = state.store.get_ticket(ticket_id)
-    if t:
-        t.status = TicketStatus.VERIFIED if ok else TicketStatus.EXCEPTION
-        t.record(Actor.TENANT, "verified" if ok else "not_fixed", "" if ok else "tenant says issue persists")
-        state.store.put_ticket(t)
+    if not ok:
+        engine.tenant_rejects_fix(state.tools, ticket_id, note="issue persists after repair")
+    else:
+        t = state.store.get_ticket(ticket_id)
+        if t:
+            t.status = TicketStatus.VERIFIED
+            t.record(Actor.TENANT, "verified", "")
+            state.store.put_ticket(t)
     return RedirectResponse(f"/tickets/{ticket_id}", status_code=303)
 
 

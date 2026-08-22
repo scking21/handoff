@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel
 
 from handoff.domain.models import Actor, TicketStatus, Trade, Urgency, WorkOrder
+from datetime import timedelta
+
 from handoff.tools.toolkit import HandoffTools, utcnow
 
 
@@ -160,9 +162,21 @@ def vendor_response(tools: HandoffTools, ticket_id: str, accept: bool, alternate
     if t.status != TicketStatus.DISPATCHED:
         return f"IGNORED: ticket {t.id} not awaiting vendor response (status={t.status.value})"
     if accept:
+        # Propose the earliest window from vendor ETA and lock it with the
+        # tenant — a confirmed window is what kills no-access trips.
+        eta_h = _selected_eta_hours(tools.store, t) or 24
+        window_dt = utcnow() + timedelta(hours=eta_h)
+        t.scheduled_window = window_dt.strftime("%a %b %d, %H:%M–%H:%M UTC")
         t.status = TicketStatus.SCHEDULED
-        t.record(Actor.VENDOR, "accepted", "")
+        t.record(Actor.VENDOR, "accepted", f"window {t.scheduled_window}")
         tools.store.put_ticket(t)
+        tools.message_tenant(
+            t.id,
+            "schedule_offer",
+            f"Your repair is scheduled: {t.scheduled_window}. Reply here if that time doesn't work "
+            f"and we'll rearrange.",
+            idem_key=f"{t.id}:schedule_offer",
+        )
         return "ACCEPTED"
     t.record(Actor.VENDOR, "declined", "")
     tools.store.put_ticket(t)
@@ -173,6 +187,30 @@ def vendor_response(tools: HandoffTools, ticket_id: str, accept: bool, alternate
         if "REPLAYED" not in res and "REFUSED" not in res:
             return f"REROUTED: {alt}"
     return tools.escalate_to_human(t.id, "all candidate vendors declined")
+
+
+def _selected_eta_hours(store, t: WorkOrder) -> int | None:
+    if not t.selected_vendor_id:
+        return None
+    q = next((q for q in t.quotes if q.vendor_id == t.selected_vendor_id), None)
+    return q.eta_hours if q else None
+
+
+def tenant_rejects_fix(tools: HandoffTools, ticket_id: str, note: str = "") -> str:
+    """Tenant says the problem persists after 'completion'. Reopen as urgent and
+    route back to triage with full history — never silently close."""
+    t = _must(tools, ticket_id)
+    if t.status != TicketStatus.VERIFIED and t.status != TicketStatus.CLOSED:
+        return f"IGNORED: ticket {t.id} not in a verified state (status={t.status.value})"
+    t.status = TicketStatus.TRIAGED
+    t.triage_confidence = 0.95  # history makes this high-confidence: same trade, repeat issue
+    t.record(Actor.TENANT, "reopened", note or "issue persists after repair")
+    tools.store.put_ticket(t)
+    return tools.escalate_to_human(
+        ticket_id,
+        f"tenant reports the issue persists after repair ({t.category.value if t.category else '?'}) — "
+        f"prior vendor may need re-dispatch",
+    )
 
 
 def complete_and_verify(tools: HandoffTools, ticket_id: str, notes: str, parts: list[str], invoice_amount: int) -> str:
