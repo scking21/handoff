@@ -111,3 +111,23 @@ protection, which this study confirms stays intact.
 
 Emergency remains the hardest tier (lexicographic cascade vs linear scoring);
 the native pool-filter recovers most of the gap (+12.4pts over linear alone).
+
+## Sweep-policy simulation (Aug 22)
+
+Time-accelerated lifecycle simulation: 400 tickets, 12% vendor-ghosting,
+cost model = delay×10 + escalation×15 + never-resolved×200.
+
+| Policy (nudges × interval) | Mean delay | Escalations | Cost |
+|---------------------------|-----------|-------------|------|
+| 1 × 2h (aggressive) | 7.4h | **314** | 57,784 |
+| 3 × 6h (current-ish) | 18.9h | 49 | 924 |
+| **5 × 2h (patient+persistent)** | 16.2h | **49** | **897** |
+| 5 × 8h (lazy) | 22.5h | 49 | 960 |
+
+Findings:
+1. The 49-ticket escalation floor is irreducible (ghosted vendors) — everything
+   else is tunable.
+2. Automated persistence is nearly free; human interruptions are expensive.
+   Optimal policy: nudge frequently, escalate late.
+3. Production cadence should be ~2–4h between sweeps (nightly leaves 20h gaps
+   where nothing happens); the demo's 5-min cadence stays for visibility.
