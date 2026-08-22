@@ -1,0 +1,9 @@
+{
+  "rating": 12.0,
+  "drive_minutes": 0.1125,
+  "open_jobs": 3.0,
+  "no_show": 5.0,
+  "on_call_bonus": 2.0,
+  "emergency_oncall_mult": 3.0,
+  "hourly_rate": 0.05
+}
