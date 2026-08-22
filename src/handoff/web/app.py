@@ -158,8 +158,13 @@ def ticket_detail(request: Request, ticket_id: str):
     )
 
 
+VALID_SCENARIOS = {s["key"] for s in SCENARIOS}
+
+
 @app.post("/tickets/new")
 def new_ticket(request: Request, scenario: str = Form(...), after_hours: bool = Form(False)):
+    if scenario not in VALID_SCENARIOS:
+        return HTMLResponse(f"Unknown scenario '{scenario[:40]}'.", status_code=400)
     if not limiter.allow(client_key(request)):
         return HTMLResponse("Slow down — try again in a few minutes.", status_code=429)
     open_count = sum(
@@ -178,7 +183,10 @@ def new_ticket(request: Request, scenario: str = Form(...), after_hours: bool = 
 
 @app.post("/tickets/{ticket_id}/decision")
 def pm_decision(ticket_id: str, decision: str = Form(...)):
-    engine.resume_after_approval(state.tools, ticket_id, approve=(decision == "approve"))
+    if decision not in ("approve", "reject"):
+        return RedirectResponse(f"/tickets/{ticket_id}", status_code=303)
+    if state.store.get_ticket(ticket_id):
+        engine.resume_after_approval(state.tools, ticket_id, approve=(decision == "approve"))
     return RedirectResponse(f"/tickets/{ticket_id}", status_code=303)
 
 
@@ -191,8 +199,8 @@ def vendor_action(
     invoice: int = Form(0),
 ):
     t = state.store.get_ticket(ticket_id)
-    if not t:
-        return RedirectResponse("/", status_code=303)
+    if not t or action not in ("accept", "decline", "complete"):
+        return RedirectResponse(f"/tickets/{ticket_id}", status_code=303)
     if action == "accept":
         engine.vendor_response(state.tools, ticket_id, accept=True)
     elif action == "decline":

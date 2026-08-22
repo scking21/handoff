@@ -231,3 +231,7 @@ def _must(tools: HandoffTools, ticket_id: str) -> WorkOrder:
     if not t:
         raise ValueError(f"no ticket {ticket_id}")
     return t
+
+
+def _soft(tools: HandoffTools, ticket_id: str) -> WorkOrder | None:
+    return tools.store.get_ticket(ticket_id)
