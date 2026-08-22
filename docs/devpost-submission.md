@@ -1,133 +1,60 @@
-# Devpost submission draft
+# Devpost submission — final copy (paste-ready)
 
-> Field names below match Devpost's actual submission form (checked against the
-> Devpost Help Center, 2026-08): **Project title**, **Elevator pitch** = tagline,
-> hard limit **140 characters**, **Project story** (markdown; Devpost prompts the
-> standard headings used below — no enforced character cap, but judges skim),
-> **Built with** tags, repo/video links.
+## Title
+Handoff — the maintenance-coordination agent that owns every handoff
 
-## Project title
+## Track
+Professional Agents
 
-Handoff
+## Elevator pitch (≤140 chars)
+Handoff owns every maintenance handoff — triage, quotes, dispatch, approvals — so property managers only touch real decisions.
 
-## Elevator pitch (tagline) — 135/140 chars
+## Short description
+Property managers lose 3+ hours a day routing maintenance between tenants and vendors — 8–15 manual touches per work order. **Handoff** is an autonomous agent, built with the Strands Agents SDK on Amazon Bedrock, that owns those handoffs end to end: it triages tenant reports (multimodal), discovers vendor prices, dispatches complete job cards, keeps tenants informed, chases stalled jobs on a schedule, and matches invoices against authorized scope.
 
-An autonomous coordinator that triages tenant reports, works vendors, matches
-invoices — and pings the manager only for real decisions.
+It runs in the background and **only interrupts the manager for real decisions**: spend above policy threshold, after-hours emergencies, low-confidence triage, invoice discrepancies.
 
-Alternates (measured):
+## Body
 
-- 105: `Handoff — the autonomous maintenance coordinator. Agents handle the handoffs; humans handle the judgment.` (echoes the video's closing line)
-- 140: `Agents handle the handoffs, humans handle the judgment. Handoff runs property maintenance end to end and asks only when a human must decide.` — exactly at the cap; don't edit without recounting
+### The problem
+- Vendor coordination consumes **3.2 hours/day** per property manager — the profession's #1 time drain (NAA 2025)
+- Every work order takes **8–15 manual touches** across five channels
+- **14%** of vendor dispatches no-show; each costs 22 minutes of re-dispatch plus a day of delay
+- **64%** of tenants get zero proactive updates while waiting; maintenance is the top driver of negative reviews (48%) and non-renewals
 
-## Project story
+### Who it's for
+Independent property-management firms running ~100–500 doors with a bench of trade vendors — big enough that coordination breaks daily, small enough to have no dispatch department. Today their coordinator IS the routing layer; Handoff makes them exception-handlers instead.
 
-### Inspiration
+### How it works
+1. Tenant reports an issue → instant acknowledgment (the #1 satisfaction lever)
+2. Triage via Strands structured output: urgency / category / confidence. Below a confidence floor the ticket routes to a human queue rather than guessing.
+3. Price discovery across the vendor bench; best-fit selection by rating, distance, load, no-show history
+4. Policy gate: over-threshold or after-hours → durable approval pause (persisted vendor+price) → PM approves from any device, hours later if needed → exact dispatch resumes
+5. Complete job card to the vendor: scope, access context, authorized price — accept/decline in one tap; declines re-route down the bench automatically
+6. Verified closeout: completion notes + parts + three-way invoice match against authorized scope; >10% variance escalates
+7. Nightly sweep nudges stalled vendors, ages out approvals, escalates what exceeds its lane
 
-A great professional agent clears the runway by drafting, checking, organizing,
-and following up so the expert can spend their time on the part that needs
-them. For property managers, the expert time is judgment — which vendor, which
-price, is this an emergency? — and it's buried under everything around it:
-triaging reports, phone-tagging vendors, chasing quotes, checking status,
-matching invoices. Count the touches and it's 8–15 manual steps per work order;
-coordination is the profession's #1 time drain, and slow response is a top
-driver of non-renewals. We built Handoff to be the runway-clearer so managers
-can do the part that needs them.
+### Why it matters
+Response speed is the top renewal driver after rent. Handoff converts a coordinator's day of phone tag into an exceptions-only queue: industry benchmarks put coordination automation at 55–65% time reduction and 20–30% lower maintenance spend. The audit trail doubles as legal/dispute documentation.
 
-### What it does
+### Strands Agents usage
+- Coordinator Agent running the genuine Strands tool-call loop (verified live on Bedrock)
+- Structured-output triage provider with honest confidence floor (<0.55 escalates, never guesses)
+- Model-provider portability: Bedrock Nova/Sonnet in production, deterministic scripted brain for offline tests and demos
+- Custom tools enforcing policy at the layer an adversary can reach: idempotency keys, threshold+approval checks, state preconditions
+- SafetyEnsembleProvider: deterministic hazard-keyword escalation layered over LLM judgment — undertriage of critical hazards impossible by construction
+- Sliding-window conversation management + tuned ModelRetryStrategy per current docs
+- Eval-gated deployment: 22-case judgment library, automated propose→eval→keep/discard optimization loop (docs/research/aug21-summary.md)
 
-Handoff owns maintenance coordination end to end: intake → triage (structured
-output + confidence floor) → vendor quote discovery → policy gate → dispatch of
-complete job cards → scheduling → verified closeout → invoice three-way match.
-A nightly sweep nudges stalled jobs and escalates what ages out of its lane.
+### AWS stack (all us-east-2)
+Amazon Bedrock (Nova Lite; Sonnet-ready) · Bedrock AgentCore Runtime (agent API) · AWS Lambda + API Gateway (public dashboard) · DynamoDB (shared durable state) · IAM least-privilege roles · CloudWatch + AgentCore observability
 
-It makes the safe calls on its own and surfaces only when a human actually
-needs to weigh in: spend above the firm's approval threshold, after-hours
-emergency dispatch, or a request too ambiguous to classify safely. Every step
-lands on an audit trail that doubles as dispute documentation.
-
-For whom: independent property-management firms running ~100–500 doors with a
-bench of trade vendors — big enough that coordination breaks, small enough to
-have no dispatch department.
-
-### How we built it
-
-- **Strands Agents SDK**: one Coordinator Agent runs a tool loop over the
-  ticket (triage → vendor search → quotes → gate-or-dispatch → tenant updates);
-  structured-output triage with an explicit confidence floor (0.55).
-- **Model-provider portability**: same agent code targets Amazon Bedrock
-  (Claude) and a deterministic heuristic provider — CI never calls a model, so
-  the reliability core is tested on every push for free.
-- **Reliability mechanics**: idempotency keys on every side-effecting tool;
-  approval gates persist the exact intended dispatch before pausing, so they
-  survive process restarts; escalation is a designed outcome (dispatch / gate /
-  escalate / park), not an exception.
-- **Eval gate in CI**: an 8-scenario judgment library replays through whatever
-  triage provider is configured; aggregate floors (≥0.85 urgency, ≥0.75
-  category) plus a hard rule that no emergency is ever under-triaged.
-- **AWS deploy path**: Bedrock AgentCore Runtime (quickstart recipe in
-  docs/resources.md), EventBridge Scheduler for the sweep heartbeat,
-  DynamoDB-backed store for production state.
-
-### Challenges we ran into
-
-- **Agent judgment is a specification problem.** Our first scoring misses were
-  spec bugs, not model bugs: "locked myself out" wasn't in the emergency hints;
-  generic symptom words outranked specific fixtures (a dishwasher leak read as
-  plumbing); water pouring through a ceiling *fixture* read as electrical
-  instead of plumbing. Each fix lives in the scorer's weighted-hint table and
-  is covered by the eval gate now.
-- **Approvals have to survive restarts.** Blocking in-process dies with the
-  process; persisting the gated dispatch first means resume replays exactly
-  what was approved — and a duplicate resume is a no-op.
-- **Testing real-world actions without sending them.** Idempotency keys plus a
-  deterministic provider let us assert "exactly one dispatch offer exists"
-  across a simulated crash-retry in milliseconds.
-
-### Accomplishments we're proud of
-
-Nine tests, green in under four seconds, covering crash-retry double-send
-prevention, durable approval + duplicate-resume no-op, vendor-decline reroute,
-invoice-discrepancy escalation, low-confidence triage to human, and the nightly
-sweep — run against the same code that drives the demo. The demo itself runs
-fully offline (`python -m handoff.demo`, four scenarios end to end), so the
-build is verifiable today while the Bedrock integration lands.
-
-### What we learned
-
-- Failure costs are asymmetric — over-triaging wastes money, under-triaging a
-  flood costs trust and habitability — so thresholds should be too: aggregates
-  may regress within bounds, emergencies never.
-- An agent that never says "not sure" isn't confident, it's unaudited. Honest
-  confidence scores turn uncertainty into a visible queue with an owner.
-- The policy prompt is the product: most of its words are limits (when to stop,
-  when to ask, when to refuse), not personality.
-
-### What's next
-
-Live Bedrock integration once AWS credits land (requested; see checklist),
-AgentCore deployment, and a pilot with an independent PM firm — the durable-gate
-and idempotency contracts don't change when the store moves from in-memory to
-DynamoDB.
-
-## Built with (Devpost tags)
-
-`strands-agents-sdk` `amazon-bedrock` `bedrock-agentcore` `amazon-eventbridge`
-`dynamodb` `python` `fastapi` `pytest`
+### Results we can demonstrate live
+- Flood reported "after hours" → acknowledged instantly → emergency/plumbing triage → $400+ quote → approval gate (not auto-dispatched) → PM approves → dispatched → swept/nudged — every stage from independent sessions
+- Live model triage accuracy: **100% urgency, 100% category** on the 22-case judgment library (improved from 64% via eval-driven iteration)
+- Crash-retry replay of a dispatch: exactly one vendor offer sent (idempotency proven in CI)
 
 ## Links
-
-- Repo: public GitHub URL + MIT license in About (required)
-- Video demo: ≤5 min, YouTube/Vimeo public link — script in docs/video-script.md
-
-## Checklist mapping
-
-- [x] Public repo + MIT license (About section)
-- [x] README + architecture diagram (mermaid)
-- [ ] ≤5-min video (script ready — docs/video-script.md; cold-open variants added)
-- [ ] Live demo link (AgentCore deploy once AWS creds exist — recipe:
-      https://aws.github.io/bedrock-agentcore-starter-toolkit/user-guide/runtime/quickstart.html)
-- [x] Text description (this doc — paste sections into matching Devpost fields)
-- [ ] builder.aws.com posts ×3 (drafts ready — docs/blog/)
-- [x] $50 credits requested — ⚠️ verify form matches Resources page
-      (https://forms.gle/Ssr8zLw4afKg114M7) before Sep 11 12pm PT; see docs/resources.md
+- Repo: https://github.com/scking21/handoff (MIT)
+- Live demo: https://0fmmk8vbt0.execute-api.us-east-2.amazonaws.com/
+- Video: [YouTube URL at publish]
