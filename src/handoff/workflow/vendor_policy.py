@@ -94,15 +94,18 @@ def select_best(bench: list[dict], urgency) -> dict | None:
         oncall = [v for v in pool if v.get("on_call_now")]
         pool = oncall or pool
     if urgency == Urgency.EMERGENCY:
-        # Reference-native ranking: rating first, drive/no-shows as tiebreaks.
-        # Emergency dispatch follows the documented operational rule exactly;
-        # weighted judgment remains for urgent/routine tiers.
         return max(pool,
                    key=lambda v: (v["rating"], -v["drive_minutes"],
                                   -v.get("no_show_count", 0)))
-
-    w = weights_for(urgency)
-    return max(pool, key=lambda v: score_vendor(v, w, urgency))
+    if urgency == Urgency.URGENT:
+        # Documented priority: reliability (no-shows), then availability of
+        # workload headroom, then quality, then proximity.
+        return max(pool, key=lambda v: (-v.get("no_show_count", 0),
+                                        0 if v.get("open_jobs", 0) <= 1 else -1,
+                                        v["rating"], -v["drive_minutes"]))
+    # Routine: value (quality per dollar), then proximity, then load.
+    return max(pool, key=lambda v: (v["rating"] / max(v["hourly_rate"], 1),
+                                    -v["drive_minutes"], -v.get("open_jobs", 0)))
 
 
 def with_overrides(base: VendorWeights, **overrides) -> VendorWeights:
