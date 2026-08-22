@@ -99,3 +99,15 @@ Verdict: keep **0.55**. On-distribution the model is perfectly calibrated —
 the floor is a free insurance policy. Raising it buys zero accuracy and
 costs up to 44% human burden. The floor's value is off-distribution
 protection, which this study confirms stays intact.
+
+## Robustness validation (5 fresh seeds × 400 cases per tier)
+
+| Tier | Mean fidelity | Stdev | Min |
+|------|---------------|-------|-----|
+| Emergency | 79.2–80.2% | ±1.8% | 77.0% |
+| Urgent | 93.7–94.6% | ±0.7% | 93.0% |
+| Routine | 85.5–86.3% | ±1.7% | 82.8% |
+| **Overall** | **~86%** | — | — |
+
+Emergency remains the hardest tier (lexicographic cascade vs linear scoring);
+the native pool-filter recovers most of the gap (+12.4pts over linear alone).
