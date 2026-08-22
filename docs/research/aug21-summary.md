@@ -54,3 +54,30 @@ Loop: hypothesis → single change → eval against 22-case library → keep/dis
 | Nova Micro (`us.amazon.nova-micro-v1:0`) | 95.5%, 95.5% | 100% | ~0.49s | documented fallback |
 
 Safety classification is the core promise; 20% faster at −4.5pts urgency is the wrong trade.
+
+## Night research addendum (Aug 21–22): vendor-selection weights
+
+Second autoresearch dimension: the vendor scorer itself. Built a randomized
+fidelity harness — 500 seeded dispatch decisions per urgency tier, labeled by
+an explicit lexicographic reference policy encoding documented intent
+(emergency = reliability+availability first; urgent = no-show history first;
+routine = value rating-per-dollar).
+
+| Stage | Mean fidelity |
+|-------|---------------|
+| Single weight vector (original) | 62.0% |
+| + per-urgency weight tiers | 61.6% (tiers alone don't help) |
+| + coordinate descent per tier | 90.6% train |
+| + constrained (authored cases stay 100%) | 88.3% |
+| + cross-seed validation | **86.5–86.9%** |
+
+Findings:
+1. Per-urgency tiers only help after per-tier tuning; the reorder is real.
+2. The converged tiers are interpretable: emergency discovered an effective
+   on-call bonus of 18×(vs base 2), urgent found no-show history dominating
+   rating 14:3.4, routine approximated value-ratio via rate penalty 0.48.
+3. Naive native value-ratio scoring scored 35% — structure changes need their
+   own tuning before they beat tuned-linear.
+4. Unconstrained fitting reached 90.6% but silently violated three hand-authored
+   business cases; constrained optimization kept contracts intact at 88.3%
+   mean / 86.9% fresh-seed. Statistical fitting requires business constraints.
