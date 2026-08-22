@@ -16,7 +16,9 @@ from handoff.domain.models import Trade, Urgency
 from handoff.workflow.engine import TriageDecision
 
 EMERGENCY_HINTS = [
-    "pouring", "flooding", "burst", "water everywhere", "ceiling", "gas smell",
+    "pouring", "flooding", "burst", "water everywhere", "ceiling water",
+    "water on the ceiling", "dripping from the ceiling", "from the ceiling",
+    "gas smell",
     "smell gas", "sparked", "spark", "smoke", "locked out", "locked myself out",
     "standing outside", "sewage", "no water",
 ]
@@ -104,6 +106,10 @@ class SafetyEnsembleProvider:
         "burning smell", "smoke", "gas smell", "smell gas", "carbon monoxide",
         "sparked", "sparking", "pouring", "flooding", "sewage",
     ]
+    # Case-sensitive abbreviation ("CO detector"); lowercase "co" would match
+    # inside ordinary words. CO detectors are deliberately unguarded by the
+    # smoke-detector mask (odorless/invisible hazard escalates unconditionally).
+    _CO_RE = re.compile(r"\bCO\b")
     # Narrow guard for detector-device phrases: when the device noun phrase is
     # present, the "smoke" keyword is device talk, not fire evidence — REGARDLESS
     # of whether a malfunction keyword appears (wave-3 finding: synonyms like
@@ -122,7 +128,8 @@ class SafetyEnsembleProvider:
         self.inner = inner
 
     def classify(self, raw_request: str, photo_descriptions: list[str]) -> TriageDecision:
-        text = (raw_request + " " + " ".join(photo_descriptions)).lower()
+        full_text = raw_request + " " + " ".join(photo_descriptions)
+        text = full_text.lower()
         chatter = self._smoke_detector_chatter(text)
         # The mask exists to stop DETERMINISTIC keyword scanners from seeing
         # "smoke" inside the device noun phrase. It must cover the PHOTO text
@@ -143,6 +150,8 @@ class SafetyEnsembleProvider:
             d = self.inner.classify(raw_request, photo_descriptions)
             scan_text = mask(text)
         hit = next((k for k in self.HAZARD_KEYWORDS if k in scan_text), None)
+        if hit is None and self._CO_RE.search(full_text):
+            hit = "CO"
         if hit and d.urgency != Urgency.EMERGENCY:
             return TriageDecision(
                 urgency=Urgency.EMERGENCY,

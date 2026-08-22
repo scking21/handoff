@@ -12,11 +12,16 @@ from handoff.agents.decisions import HeuristicTriageProvider, SafetyEnsembleProv
 from handoff.domain.models import Urgency
 
 
-def test_bare_ceiling_is_emergency_in_heuristic():
+def test_bare_ceiling_no_longer_escalates():
+    """FIXED (Agent 2 finding adopted): the over-broad bare-'ceiling' hint was
+    scoped to 'ceiling water'/'water on the ceiling'. A bare ceiling mention
+    is no longer an emergency signal; actual water-on-ceiling reports still are."""
     e = SafetyEnsembleProvider(HeuristicTriageProvider())
     d = e.classify("There is a ceiling in my apartment.", [])
-    assert d.urgency == Urgency.EMERGENCY  # documents the over-broad hint
-    assert "ceiling" in d.rationale
+    assert d.urgency != Urgency.EMERGENCY
+
+    d2 = e.classify("Water is dripping from the ceiling onto the floor.", [])
+    assert d2.urgency == Urgency.EMERGENCY  # real ceiling-water still escalates
 
 
 def test_photos1_without_ceiling_not_escalated():

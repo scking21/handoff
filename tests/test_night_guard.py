@@ -61,13 +61,12 @@ def test_co_detectors_never_guarded(text):
     assert d.urgency == Urgency.EMERGENCY
 
 
-def test_co_abbreviation_is_a_known_net_gap():
-    # DOCUMENTED finding, not a regression: the hazard net matches
-    # "carbon monoxide" but not the bare abbreviation "CO", so abbreviation-only
-    # reports don't net-escalate (the LLM layer still judges them on context).
-    # Reported to Agent 1 as suggested vocabulary addition.
+def test_co_abbreviation_now_net_escalates():
+    """FIXED (Agent 2 finding adopted): the hazard net gained a case-sensitive
+    \bCO\b abbreviation rule — CO detectors are unguarded by the smoke-detector
+    mask, so abbreviation-only reports now deterministically escalate."""
     d = ensemble().classify("CO detector low battery chirp.", [])
-    assert d.urgency != Urgency.EMERGENCY
+    assert d.urgency == Urgency.EMERGENCY
 
 
 def test_chatter_rationale_has_no_escalation_marker():
