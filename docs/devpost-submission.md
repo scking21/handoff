@@ -49,12 +49,28 @@ Response speed is the top renewal driver after rent. Handoff converts a coordina
 ### AWS stack (all us-east-2)
 Amazon Bedrock (Nova Lite; Sonnet-ready) · Bedrock AgentCore Runtime (agent API) · AWS Lambda + API Gateway (public dashboard) · DynamoDB (shared durable state) · IAM least-privilege roles · CloudWatch + AgentCore observability
 
+**Public-endpoint hardening:** per-IP rate limiting · 120-open-ticket capacity cap · Lambda reserved concurrency 5 · XSS-safe templating pinned by test · `scripts/live_regression.py` runs the deployed URL green before we share it with anyone
+
+**Operating lessons (live):** cross-region model inference needed the *global* foundation-model ARN prefix in IAM, not just the regional one; runtime sessions are warm per session ID, so every deploy/demo take uses a fresh ID
+
 ### Results we can demonstrate live
 - Flood reported "after hours" → acknowledged instantly → emergency/plumbing triage → $400+ quote → approval gate (not auto-dispatched) → PM approves → dispatched → swept/nudged — every stage from independent sessions
 - Live model triage accuracy: **100% urgency, 100% category** on the 22-case judgment library (improved from 64% via eval-driven iteration)
 - Crash-retry replay of a dispatch: exactly one vendor offer sent (idempotency proven in CI)
+- Live-model safety check: on the first Bedrock run, Nova tried to dispatch past its own approval gate — the tool layer refused it and the ticket ended AWAITING_APPROVAL exactly per policy
+
+### What's next
+- Claude Sonnet 4.5 as primary model (one-time Anthropic use-case form; Nova Lite carries the live demo today)
+- Real tenant/vendor SMS via the SNS sandbox — the channel layer is abstracted (console/file backends today, SNS-shaped)
+- Guardrails PII fencing at intake
+- Pilot with an independent property-management firm
 
 ## Links
 - Repo: https://github.com/scking21/handoff (MIT)
 - Live demo: https://0fmmk8vbt0.execute-api.us-east-2.amazonaws.com/
 - Video: [YouTube URL at publish]
+
+## Submission checklist
+- [x] Live demo link — https://0fmmk8vbt0.execute-api.us-east-2.amazonaws.com/ (board renders + submit→triage→gate verified from the open internet, 2026-08-21)
+- [ ] Video (≤5 min) — script + live-recording gotchas ready in `docs/video-script.md`
+- [ ] builder.aws.com posts ×3 — drafts READY in `docs/blog/`

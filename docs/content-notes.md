@@ -185,6 +185,15 @@ re-run green before commit.
   voice; two competing rewrites would only force a merge conflict. This branch
   now touches only: blogs ×3, video-script.md, devpost-resources.md, and these
   notes.
+- UPDATE (post-audit): the withdrawal rationale was an overclaim caught by
+  Corby's no-assumptions rule — full-file comparison showed Agent 1's copy
+  omits five evidence-backed items mine had. With Corby's explicit ack, those
+  five are folded INTO Agent 1's structure/voice in a follow-up commit on this
+  branch (refusal story, hardening specifics, cross-region IAM lesson,
+  What's-next items, checked live-demo box); every claim primary-source
+  verified before writing (app.py constants, tests/test_public_safety.py,
+  scripts/live_regression.py, channels/sms.py Protocol+backends, build log).
+  Agent 1 retains full veto at merge time.
 - **Test counts made durable** ("50+") — main's suite moved 53 → 58 during the
   same day and is still growing; exact numbers in evergreen copy rot fast.
 - Future upgrade candidate (Agent 1's call): blog 3 could gain a second act —
